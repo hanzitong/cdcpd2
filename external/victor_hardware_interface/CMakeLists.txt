@@ -1,44 +1,53 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.9)
 project(victor_hardware_interface)
 
-set(CATKIN_PACKAGES
+# Default to C++17
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+find_package(ament_cmake REQUIRED)
+find_package(diagnostic_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+    "msg/CartesianControlModeLimits.msg"
+    "msg/CartesianImpedanceParameters.msg"
+    "msg/CartesianPathExecutionParameters.msg"
+    "msg/CartesianValueQuantity.msg"
+    "msg/ControlMode.msg"
+    "msg/ControlModeParameters.msg"
+    "msg/JointImpedanceParameters.msg"
+    "msg/JointPathExecutionParameters.msg"
+    "msg/JointValueQuantity.msg"
+    "msg/MotionCommand.msg"
+    "msg/MotionStatus.msg"
+    "msg/Robotiq3FingerActuatorCommand.msg"
+    "msg/Robotiq3FingerActuatorStatus.msg"
+    "msg/Robotiq3FingerCommand.msg"
+    "msg/Robotiq3FingerObjectStatus.msg"
+    "msg/Robotiq3FingerStatus.msg"
+    "msg/Robotiq3FingerStatus_sync.msg"
+    "msg/GraspStatus.msg"
+    DEPENDENCIES
     diagnostic_msgs
     geometry_msgs
     sensor_msgs
     std_msgs
-    )
+)
 
-find_package(catkin REQUIRED COMPONENTS ${CATKIN_PACKAGES} message_generation)
-find_package(cmake_modules REQUIRED)
-
-add_message_files(DIRECTORY msg FILES
-    CartesianControlModeLimits.msg
-    CartesianImpedanceParameters.msg
-    CartesianPathExecutionParameters.msg
-    CartesianValueQuantity.msg
-    ControlMode.msg
-    ControlModeParameters.msg
-    JointImpedanceParameters.msg
-    JointPathExecutionParameters.msg
-    JointValueQuantity.msg
-    MotionCommand.msg
-    MotionStatus.msg
-    Robotiq3FingerActuatorCommand.msg
-    Robotiq3FingerActuatorStatus.msg
-    Robotiq3FingerCommand.msg
-    Robotiq3FingerObjectStatus.msg
-    Robotiq3FingerStatus.msg
-    Robotiq3FingerStatus_sync.msg
-    GraspStatus.msg)
-
-## Generate added messages and services with any dependencies listed here
-generate_messages(DEPENDENCIES
+# Export dependencies
+ament_export_dependencies(
     diagnostic_msgs
     geometry_msgs
     sensor_msgs
-    std_msgs)
+    std_msgs
+    rosidl_default_runtime
+)
 
-catkin_package(
-    CATKIN_DEPENDS  ${CATKIN_PACKAGES}
-                    message_runtime)
+ament_package()
 

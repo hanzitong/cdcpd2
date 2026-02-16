@@ -1,81 +1,80 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.9)
 project(deformable_manipulation_msgs)
 
-set(CATKIN_PACKAGES
-  actionlib_msgs
-  geometry_msgs
-  std_msgs
-  sensor_msgs
-  sdf_tools
-)
-## Find catkin macros and libraries
-find_package(catkin REQUIRED COMPONENTS ${CATKIN_PACKAGES} message_generation)
+# Default to C++17
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+## Find dependencies
+find_package(ament_cmake REQUIRED)
+find_package(action_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(sdf_tools REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
 
 ################################################
 ## Declare ROS messages, services and actions ##
 ################################################
 
-## Generate messages in the 'msg' folder
-add_message_files(
-    FILES
-    ConfidenceStamped.msg
-    VectorPose.msg
-    VectorConfiguration.msg
-    WorldState.msg
-    RobotPathTest.msg
-    RobotPathTestResult.msg
-    TransitionTest.msg
-    TransitionTestResult.msg
-)
-
-## Generate services in the 'srv' folder
-add_service_files(
-    FILES
-    ExecuteRobotMotion.srv
-    GetGripperNames.srv
-    GetGripperAttachedNodeIndices.srv
-    GetGripperCollisionReport.srv
-    GetGripperPose.srv
-    GetGripperStretchingVectorInfo.srv
-    GetPointSet.srv
-    GetVector3Set.srv
-    GetPoseSet.srv
-    GetMirrorLine.srv
-    GetFreeSpaceGraph.srv
-    GetSignedDistanceField.srv
-    GetRobotConfiguration.srv
-    TestRobotMotionMicrosteps.srv
-    TransitionTestingVisualization.srv
-)
-
-## Generate actions in the 'action' folder
-add_action_files(
-    FILES
-    TestRobotMotion.action
-    GenerateTransitionData.action
-    TestRobotPaths.action
-)
-
-## Generate added messages and services with any dependencies listed here
-generate_messages(
+## Generate messages, services and actions
+rosidl_generate_interfaces(${PROJECT_NAME}
+    # Messages
+    "msg/ConfidenceStamped.msg"
+    "msg/VectorPose.msg"
+    "msg/VectorConfiguration.msg"
+    "msg/WorldState.msg"
+    "msg/RobotPathTest.msg"
+    "msg/RobotPathTestResult.msg"
+    "msg/TransitionTest.msg"
+    "msg/TransitionTestResult.msg"
+    # Services
+    "srv/ExecuteRobotMotion.srv"
+    "srv/GetGripperNames.srv"
+    "srv/GetGripperAttachedNodeIndices.srv"
+    "srv/GetGripperCollisionReport.srv"
+    "srv/GetGripperPose.srv"
+    "srv/GetGripperStretchingVectorInfo.srv"
+    "srv/GetPointSet.srv"
+    "srv/GetVector3Set.srv"
+    "srv/GetPoseSet.srv"
+    "srv/GetMirrorLine.srv"
+    "srv/GetFreeSpaceGraph.srv"
+    "srv/GetSignedDistanceField.srv"
+    "srv/GetRobotConfiguration.srv"
+    "srv/TestRobotMotionMicrosteps.srv"
+    "srv/TransitionTestingVisualization.srv"
+    # Actions
+    "action/TestRobotMotion.action"
+    "action/GenerateTransitionData.action"
+    "action/TestRobotPaths.action"
     DEPENDENCIES
-    ${CATKIN_PACKAGES}
-)
-
-###################################
-## catkin specific configuration ##
-###################################
-
-catkin_package(
-    INCLUDE_DIRS    include
-#    LIBRARIES       ${PROJECT_NAME}
-    CATKIN_DEPENDS  ${CATKIN_PACKAGES}
-                    message_runtime
+    action_msgs
+    geometry_msgs
+    std_msgs
+    sensor_msgs
+    sdf_tools
 )
 
 ###########
 ## Build ##
 ###########
 
-# Just mark this as a source in order to force it to show up in the IDE
-add_custom_target(${PROJECT_NAME}_headers SOURCES include/${PROJECT_NAME}/messages.h)
+## Install header files
+install(DIRECTORY include/
+    DESTINATION include)
+
+# Export dependencies
+ament_export_dependencies(
+    action_msgs
+    geometry_msgs
+    std_msgs
+    sensor_msgs
+    sdf_tools
+    rosidl_default_runtime
+)
+
+ament_package()

@@ -1,30 +1,16 @@
 cmake_minimum_required(VERSION 3.9)
 project(cdcpd)
 
-set(CMAKE_CXX_STANDARD 17)
+# Default to C++17
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-option(CDCPD_TESTING OFF)
 
-set(CATKIN_PACKAGES
-        geometric_shapes
-        geometry_msgs
-        image_geometry
-        image_transport
-        moveit_msgs
-        moveit_ros_planning
-        moveit_visual_tools
-        pybind11_catkin
-        pyrosmsg
-        sdf_tools
-        sensor_msgs
-        smmap_models
-        smmap_utilities
-        std_msgs
-        )
+option(CDCPD_TESTING OFF)
 
 # https://blog.kitware.com/cmake-and-the-default-build-type/
 set(default_build_type "Release")
-#set(default_build_type "RelWithDebInfo")
 if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     message(WARNING "Setting build type to '${default_build_type}' as none was specified.")
     set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE
@@ -34,10 +20,29 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
             "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif ()
 
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 
-# TODO Components?
-find_package(catkin REQUIRED COMPONENTS ${CATKIN_PACKAGES})
+# Find dependencies
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(geometric_shapes REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(image_geometry REQUIRED)
+find_package(image_transport REQUIRED)
+find_package(moveit_msgs REQUIRED)
+find_package(moveit_ros_planning REQUIRED)
+find_package(moveit_ros_planning_interface REQUIRED)
+find_package(moveit_visual_tools REQUIRED)
+find_package(sdf_tools REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(smmap_models REQUIRED)
+find_package(smmap_utilities REQUIRED)
+find_package(std_msgs REQUIRED)
+
 find_package(OpenCV REQUIRED)
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 find_package(GUROBI REQUIRED)
@@ -47,16 +52,12 @@ find_package(Qt5 QUIET COMPONENTS Qt5 Core Xml Script OpenGL Svg)
 find_package(PCL 1.8 REQUIRED COMPONENTS common io filters visualization features kdtree)
 
 # horrid hack to remove the space at the beginning of the list
-list(REMOVE_AT PCL_DEFINITIONS 0)
-
-catkin_python_setup()
-
-catkin_package(
-        INCLUDE_DIRS include
-        LIBRARIES cdcpd
-        CATKIN_DEPENDS ${CATKIN_PACKAGES}
-	DEPENDS OpenCV Eigen3 GUROBI FAISS Qt5 PCL # NOTE: adding CGAL errors, but it's working so whatever
-)
+if(PCL_DEFINITIONS)
+  list(LENGTH PCL_DEFINITIONS _len)
+  if(_len GREATER 0)
+    list(REMOVE_AT PCL_DEFINITIONS 0)
+  endif()
+endif()
 
 ### The library itself
 add_library(cdcpd SHARED
@@ -71,14 +72,31 @@ target_include_directories(cdcpd PUBLIC
 target_include_directories(cdcpd SYSTEM PUBLIC
         ${PCL_INCLUDE_DIRS}
         ${OpenCV_INCLUDE_DIRS}
-        ${catkin_INCLUDE_DIRS}
         ${GUROBI_INCLUDE_DIRS}
         ${FAISS_INCLUDE_DIRS})
+
+# Manually link ROS 2 dependencies
+ament_target_dependencies(cdcpd PUBLIC
+        rclcpp
+        geometric_shapes
+        geometry_msgs
+        image_geometry
+        image_transport
+        moveit_msgs
+        moveit_ros_planning
+        moveit_ros_planning_interface
+        moveit_visual_tools
+        sdf_tools
+        sensor_msgs
+        smmap_models
+        smmap_utilities
+        std_msgs
+        )
+
 target_link_libraries(cdcpd PUBLIC
         lapack
         ${PCL_LIBRARIES}
         Eigen3::Eigen
-        ${catkin_LIBRARIES}
         ${GUROBI_LIBRARIES}
         ${FAISS_LIBRARY}
         ${OpenCV_LIBS}
@@ -87,9 +105,7 @@ target_link_libraries(cdcpd PUBLIC
 message(STATUS "GUROBI LIB ${GUROBI_LIBRARIES}")
 message(STATUS "GUROBI INCLUDE ${GUROBI_INCLUDE_DIRS}")
 
-add_dependencies(cdcpd ${catkin_EXPORTED_TARGETS})
 target_compile_definitions(cdcpd PUBLIC ${PCL_DEFINITIONS})
-target_compile_options(cdcpd PRIVATE -Wall -Wextra)
 
 # Set to private to not force downstream libraries to link against OpenMP
 # https://cliutils.gitlab.io/modern-cmake/chapters/packages/OpenMP.html
@@ -104,35 +120,84 @@ add_library(cdcpd::cdcpd ALIAS cdcpd)
 #     target_link_libraries(pycdcpd PUBLIC cdcpd)
 # endif()
 
-if (CATKIN_ENABLE_TESTING AND CDCPD_TESTING)
+if (CDCPD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
   message("Building tests!")
   add_subdirectory(tests)
 endif()
 
 ### Installation
-configure_file(cdcpd-config.cmake.in "${PROJECT_BINARY_DIR}/cdcpd-config.cmake" @ONLY)
-install(TARGETS cdcpd EXPORT cdcpd-targets DESTINATION lib/${PROJECT_NAME})
+install(TARGETS cdcpd
+        EXPORT cdcpd-targets
+        ARCHIVE DESTINATION lib
+        LIBRARY DESTINATION lib
+        RUNTIME DESTINATION bin
+        INCLUDES DESTINATION include)
+
 install(FILES
         include/cdcpd/cdcpd.h
         include/cdcpd/optimizer.h
         include/cdcpd/obs_util.h
         include/cdcpd/past_template_matcher.h
-        DESTINATION
-        include/cdcpd)
-install(FILES "${PROJECT_BINARY_DIR}/cdcpd-config.cmake" DESTINATION lib/${PROJECT_NAME})
+        DESTINATION include/cdcpd)
 
-# install(EXPORT cdcpd-targets NAMESPACE cdcpd:: DESTINATION lib/${PROJECT_NAME})
+install(EXPORT cdcpd-targets
+        FILE cdcpd-targets.cmake
+        NAMESPACE cdcpd::
+        DESTINATION share/${PROJECT_NAME}/cmake)
 
 add_executable(cdcpd_node
         src/cdcpd_ros/kinect_sub.cpp
         src/cdcpd_node.cpp
         )
-add_dependencies(cdcpd_node ${catkin_EXPORTED_TARGETS})
-target_link_libraries(cdcpd_node PRIVATE cdcpd ${catkin_LIBRARIES})
+ament_target_dependencies(cdcpd_node
+        rclcpp
+        sensor_msgs
+        geometry_msgs
+        std_msgs
+        )
+target_link_libraries(cdcpd_node PRIVATE cdcpd)
 
 add_executable(cdcpd_offline
         src/cdcpd_ros/kinect_sub.cpp
         src/cdcpd_offline.cpp
         )
-add_dependencies(cdcpd_offline ${catkin_EXPORTED_TARGETS})
-target_link_libraries(cdcpd_offline PRIVATE cdcpd ${catkin_LIBRARIES})
+ament_target_dependencies(cdcpd_offline
+        rclcpp
+        sensor_msgs
+        geometry_msgs
+        std_msgs
+        )
+target_link_libraries(cdcpd_offline PRIVATE cdcpd)
+
+install(TARGETS
+        cdcpd_node
+        cdcpd_offline
+        DESTINATION lib/${PROJECT_NAME})
+
+# Export dependencies
+ament_export_targets(cdcpd-targets HAS_LIBRARY_TARGET)
+ament_export_dependencies(
+        rclcpp
+        geometric_shapes
+        geometry_msgs
+        image_geometry
+        image_transport
+        moveit_msgs
+        moveit_ros_planning
+        moveit_ros_planning_interface
+        moveit_visual_tools
+        sdf_tools
+        sensor_msgs
+        smmap_models
+        smmap_utilities
+        std_msgs
+        OpenCV
+        Eigen3
+        GUROBI
+        FAISS
+        Qt5
+        PCL
+        )
+
+ament_package()

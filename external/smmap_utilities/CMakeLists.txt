@@ -1,63 +1,32 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.9)
 project(smmap_utilities)
 
-set(CATKIN_PACKAGES
-        arc_utilities
-        geometry_msgs
-        kinematics_toolbox
-        deformable_manipulation_experiment_params
-        deformable_manipulation_msgs
-        sdf_tools
-        )
+# Default to C++17
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic -Wconversion -Werror=return-type -Werror=missing-field-initializers)
+endif()
 
 ## Add our local cmake modules to the list that can be found
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 
-## Find catkin macros and libraries
-find_package(catkin REQUIRED COMPONENTS ${CATKIN_PACKAGES})
+# Find dependencies
+find_package(ament_cmake REQUIRED)
+find_package(arc_utilities REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(kinematics_toolbox REQUIRED)
+find_package(deformable_manipulation_experiment_params REQUIRED)
+find_package(deformable_manipulation_msgs REQUIRED)
+find_package(sdf_tools REQUIRED)
 
 ## System dependencies are found with CMake's conventions
-find_package(cmake_modules REQUIRED)
-find_package(Eigen3 REQUIRED)
-set(EIGEN3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
+find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 find_package(GUROBI)
 find_package(NOMAD)
-
-
-###################################
-## catkin specific configuration ##
-###################################
-set(CATKIN_EXPORT_LIBRARIES ${PROJECT_NAME})
-if (GUROBI_FOUND)
-    list(APPEND CATKIN_EXPORT_LIBRARIES ${PROJECT_NAME}_gurobi_solvers)
-endif ()
-if (NOMAD_FOUND)
-    list(APPEND CATKIN_EXPORT_LIBRARIES ${PROJECT_NAME}_nomad_solvers)
-endif ()
-
-catkin_package(
-        INCLUDE_DIRS include
-        LIBRARIES ${CATKIN_EXPORT_LIBRARIES}
-        CATKIN_DEPENDS ${CATKIN_PACKAGES}
-        DEPENDS EIGEN3
-        GUROBI
-        NOMAD
-)
-
-###########
-## Build ##
-###########
-
-## Specify additional locations of header files
-## Your package locations should be listed before other locations
-include_directories(include
-        SYSTEM
-        ${catkin_INCLUDE_DIRS}
-        ${EIGEN3_INCLUDE_DIRS}
-        )
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto -O3 -Wall -Wextra -Wpedantic -Wconversion -Werror=return-type -Werror=missing-field-initializers")
 
 #############
 ## Library ##
@@ -70,19 +39,95 @@ set(SRC
         src/ros_communication_helpers.cpp
         src/trajectory.cpp)
 add_library(${PROJECT_NAME} ${SRC})
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
-add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
+target_include_directories(${PROJECT_NAME} PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>)
+
+ament_target_dependencies(${PROJECT_NAME}
+        arc_utilities
+        geometry_msgs
+        kinematics_toolbox
+        deformable_manipulation_experiment_params
+        deformable_manipulation_msgs
+        sdf_tools
+        )
+target_link_libraries(${PROJECT_NAME} Eigen3::Eigen)
 
 if (NOMAD_FOUND)
     add_library(${PROJECT_NAME}_nomad_solvers src/nomad_solvers.cpp)
-    target_link_libraries(${PROJECT_NAME}_nomad_solvers ${catkin_LIBRARIES} ${NOMAD_LIBRARIES})
-    add_dependencies(${PROJECT_NAME}_nomad_solvers ${catkin_EXPORTED_TARGETS})
-    target_include_directories(${PROJECT_NAME}_nomad_solvers PUBLIC ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS} ${NOMAD_INCLUDE_DIRS})
+    target_include_directories(${PROJECT_NAME}_nomad_solvers PUBLIC
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+            $<INSTALL_INTERFACE:include>
+            ${NOMAD_INCLUDE_DIRS})
+    ament_target_dependencies(${PROJECT_NAME}_nomad_solvers
+            arc_utilities
+            geometry_msgs
+            kinematics_toolbox
+            deformable_manipulation_experiment_params
+            deformable_manipulation_msgs
+            sdf_tools
+            )
+    target_link_libraries(${PROJECT_NAME}_nomad_solvers Eigen3::Eigen ${NOMAD_LIBRARIES})
 endif ()
 
 if (GUROBI_FOUND)
     add_library(${PROJECT_NAME}_gurobi_solvers src/gurobi_solvers.cpp)
-    target_link_libraries(${PROJECT_NAME}_gurobi_solvers ${catkin_LIBRARIES} ${GUROBI_LIBRARIES})
-    add_dependencies(${PROJECT_NAME}_gurobi_solvers ${catkin_EXPORTED_TARGETS})
-    target_include_directories(${PROJECT_NAME}_gurobi_solvers PUBLIC ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS} ${GUROBI_INCLUDE_DIRS})
+    target_include_directories(${PROJECT_NAME}_gurobi_solvers PUBLIC
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+            $<INSTALL_INTERFACE:include>
+            ${GUROBI_INCLUDE_DIRS})
+    ament_target_dependencies(${PROJECT_NAME}_gurobi_solvers
+            arc_utilities
+            geometry_msgs
+            kinematics_toolbox
+            deformable_manipulation_experiment_params
+            deformable_manipulation_msgs
+            sdf_tools
+            )
+    target_link_libraries(${PROJECT_NAME}_gurobi_solvers Eigen3::Eigen ${GUROBI_LIBRARIES})
 endif ()
+
+## Installation
+set(EXPORT_TARGETS ${PROJECT_NAME})
+if (GUROBI_FOUND)
+    list(APPEND EXPORT_TARGETS ${PROJECT_NAME}_gurobi_solvers)
+endif ()
+if (NOMAD_FOUND)
+    list(APPEND EXPORT_TARGETS ${PROJECT_NAME}_nomad_solvers)
+endif ()
+
+install(TARGETS ${EXPORT_TARGETS}
+        EXPORT ${PROJECT_NAME}-targets
+        ARCHIVE DESTINATION lib
+        LIBRARY DESTINATION lib
+        RUNTIME DESTINATION bin
+        INCLUDES DESTINATION include)
+
+install(DIRECTORY include/
+        DESTINATION include)
+
+install(EXPORT ${PROJECT_NAME}-targets
+        FILE ${PROJECT_NAME}-targets.cmake
+        NAMESPACE ${PROJECT_NAME}::
+        DESTINATION share/${PROJECT_NAME}/cmake)
+
+# Export dependencies
+ament_export_targets(${PROJECT_NAME}-targets HAS_LIBRARY_TARGET)
+ament_export_dependencies(
+        arc_utilities
+        geometry_msgs
+        kinematics_toolbox
+        deformable_manipulation_experiment_params
+        deformable_manipulation_msgs
+        sdf_tools
+        Eigen3
+        )
+
+if (GUROBI_FOUND)
+    ament_export_dependencies(GUROBI)
+endif()
+if (NOMAD_FOUND)
+    ament_export_dependencies(NOMAD)
+endif()
+
+ament_package()
