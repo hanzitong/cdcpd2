@@ -31,7 +31,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
     "msg/Robotiq3FingerCommand.msg"
     "msg/Robotiq3FingerObjectStatus.msg"
     "msg/Robotiq3FingerStatus.msg"
-    "msg/Robotiq3FingerStatus_sync.msg"
+    "msg/Robotiq3FingerStatusSync.msg"
     "msg/GraspStatus.msg"
     DEPENDENCIES
     diagnostic_msgs
