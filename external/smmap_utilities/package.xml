@@ -10,7 +10,7 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <depend>arc_utilities</depend>
+  <depend>arm_utilities</depend>
   <depend>deformable_manipulation_experiment_params</depend>
   <depend>deformable_manipulation_msgs</depend>
   <depend>geometry_msgs</depend>

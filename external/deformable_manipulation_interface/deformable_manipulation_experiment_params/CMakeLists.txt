@@ -13,7 +13,7 @@ endif()
 
 ## Find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(arc_utilities REQUIRED)
+find_package(arm_utilities REQUIRED)
 find_package(rclcpp REQUIRED)
 
 ## System dependencies are found with CMake's conventions
@@ -34,7 +34,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
         $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(${PROJECT_NAME}
-    arc_utilities
+    arm_utilities
     rclcpp
 )
 target_link_libraries(${PROJECT_NAME} Eigen3::Eigen)
@@ -61,7 +61,7 @@ install(EXPORT ${PROJECT_NAME}-targets
 # Export dependencies
 ament_export_targets(${PROJECT_NAME}-targets HAS_LIBRARY_TARGET)
 ament_export_dependencies(
-    arc_utilities
+    arm_utilities
     rclcpp
     Eigen3
 )

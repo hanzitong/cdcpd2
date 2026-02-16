@@ -13,7 +13,7 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(smmap_utilities REQUIRED)
-find_package(arc_utilities REQUIRED)
+find_package(arm_utilities REQUIRED)
 find_package(deformable_manipulation_msgs REQUIRED)
 find_package(sdf_tools REQUIRED)
 
@@ -25,7 +25,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 ament_target_dependencies(${PROJECT_NAME}
         smmap_utilities
-        arc_utilities
+        arm_utilities
         deformable_manipulation_msgs
         sdf_tools
         )
@@ -50,7 +50,7 @@ install(EXPORT ${PROJECT_NAME}-targets
 ament_export_targets(${PROJECT_NAME}-targets HAS_LIBRARY_TARGET)
 ament_export_dependencies(
         smmap_utilities
-        arc_utilities
+        arm_utilities
         deformable_manipulation_msgs
         sdf_tools
         )

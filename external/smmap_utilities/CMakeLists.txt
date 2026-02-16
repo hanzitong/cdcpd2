@@ -16,7 +16,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 
 # Find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(arc_utilities REQUIRED)
+find_package(arm_utilities REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(kinematics_toolbox REQUIRED)
 find_package(deformable_manipulation_experiment_params REQUIRED)
@@ -44,7 +44,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
         $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(${PROJECT_NAME}
-        arc_utilities
+        arm_utilities
         geometry_msgs
         kinematics_toolbox
         deformable_manipulation_experiment_params
@@ -60,7 +60,7 @@ if (NOMAD_FOUND)
             $<INSTALL_INTERFACE:include>
             ${NOMAD_INCLUDE_DIRS})
     ament_target_dependencies(${PROJECT_NAME}_nomad_solvers
-            arc_utilities
+            arm_utilities
             geometry_msgs
             kinematics_toolbox
             deformable_manipulation_experiment_params
@@ -77,7 +77,7 @@ if (GUROBI_FOUND)
             $<INSTALL_INTERFACE:include>
             ${GUROBI_INCLUDE_DIRS})
     ament_target_dependencies(${PROJECT_NAME}_gurobi_solvers
-            arc_utilities
+            arm_utilities
             geometry_msgs
             kinematics_toolbox
             deformable_manipulation_experiment_params
@@ -114,7 +114,7 @@ install(EXPORT ${PROJECT_NAME}-targets
 # Export dependencies
 ament_export_targets(${PROJECT_NAME}-targets HAS_LIBRARY_TARGET)
 ament_export_dependencies(
-        arc_utilities
+        arm_utilities
         geometry_msgs
         kinematics_toolbox
         deformable_manipulation_experiment_params

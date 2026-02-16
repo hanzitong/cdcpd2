@@ -29,7 +29,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 # Find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(arc_utilities REQUIRED)
+find_package(arm_utilities REQUIRED)
 find_package(geometric_shapes REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(image_geometry REQUIRED)
@@ -85,7 +85,7 @@ target_include_directories(cdcpd SYSTEM PUBLIC
 # Manually link ROS 2 dependencies
 ament_target_dependencies(cdcpd PUBLIC
         rclcpp
-        arc_utilities
+        arm_utilities
         geometric_shapes
         geometry_msgs
         image_geometry
@@ -203,7 +203,7 @@ install(TARGETS
 ament_export_targets(cdcpd-targets HAS_LIBRARY_TARGET)
 ament_export_dependencies(
         rclcpp
-        arc_utilities
+        arm_utilities
         geometric_shapes
         geometry_msgs
         image_geometry

@@ -23,7 +23,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(image_transport REQUIRED)
 find_package(cv_bridge REQUIRED)
-find_package(arc_utilities REQUIRED)
+find_package(arm_utilities REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
@@ -73,7 +73,7 @@ if(moveit_core_FOUND)
         visualization_msgs
         image_transport
         cv_bridge
-        arc_utilities
+        arm_utilities
         moveit_core
         moveit_ros_planning
         moveit_msgs
@@ -118,7 +118,7 @@ else()
         visualization_msgs
         image_transport
         cv_bridge
-        arc_utilities
+        arm_utilities
         )
     
     target_link_libraries(${PROJECT_NAME}
@@ -212,7 +212,7 @@ ament_export_dependencies(
     visualization_msgs
     image_transport
     cv_bridge
-    arc_utilities
+    arm_utilities
     moveit_msgs
     Eigen3
     OpenCV
