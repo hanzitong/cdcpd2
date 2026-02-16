@@ -1,13 +1,15 @@
 #ifndef KINECT_SUB_H
 #define KINECT_SUB_H
 
-#include <depth_image_proc/depth_conversions.h>
-#include <image_transport/image_transport.h>
-#include <image_transport/subscriber_filter.h>
+#include <cv_bridge/cv_bridge.h>
+#include <image_transport/image_transport.hpp>
+#include <image_transport/subscriber_filter.hpp>
 #include <message_filters/subscriber.h>
-#include <message_filters/time_synchronizer.h>
-#include <ros/callback_queue.h>
-#include <ros/ros.h>
+#include <message_filters/sync_policies/exact_time.h>
+#include <message_filters/synchronizer.h>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/image.hpp>
+#include <sensor_msgs/msg/camera_info.hpp>
 
 #include <memory>
 #include <string>
@@ -15,13 +17,10 @@
 class KinectSub {
  public:
   using SyncPolicy =
-      message_filters::sync_policies::ExactTime<sensor_msgs::Image, sensor_msgs::Image, sensor_msgs::CameraInfo>;
-  using DepthTraits = depth_image_proc::DepthTraits<uint16_t>;
+      message_filters::sync_policies::ExactTime<sensor_msgs::msg::Image, sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo>;
 
   struct SubscriptionOptions {
-    ros::NodeHandle nh;
-    ros::NodeHandle pnh;
-    image_transport::TransportHints hints;
+    rclcpp::Node::SharedPtr node;
     int queue_size;
     std::string topic_prefix;
     std::string rgb_topic;
@@ -29,9 +28,7 @@ class KinectSub {
     std::string cam_topic;
 
     explicit SubscriptionOptions(const std::string& prefix = "kinect2_victor_head/hd")
-        : nh(),
-          pnh("~"),
-          hints("raw", ros::TransportHints(), pnh),
+        : node(nullptr),
           queue_size(10),
           topic_prefix(prefix),
           rgb_topic(topic_prefix + "/image_color_rect"),
@@ -39,24 +36,23 @@ class KinectSub {
           cam_topic(topic_prefix + "/camera_info") {}
   };
 
-  std::unique_ptr<image_transport::ImageTransport> it;
-  std::unique_ptr<image_transport::SubscriberFilter> rgb_sub;
-  std::unique_ptr<image_transport::SubscriberFilter> depth_sub;
-  std::unique_ptr<message_filters::Subscriber<sensor_msgs::CameraInfo>> cam_sub;
-  std::unique_ptr<message_filters::Synchronizer<SyncPolicy>> sync;
+  std::shared_ptr<image_transport::ImageTransport> it;
+  std::shared_ptr<image_transport::SubscriberFilter> rgb_sub;
+  std::shared_ptr<image_transport::SubscriberFilter> depth_sub;
+  std::shared_ptr<message_filters::Subscriber<sensor_msgs::msg::CameraInfo>> cam_sub;
+  std::shared_ptr<message_filters::Synchronizer<SyncPolicy>> sync;
 
   SubscriptionOptions options;
 
   std::function<void(cv::Mat, cv::Mat, cv::Matx33d)> externCallback;
-  ros::CallbackQueue callbackQueue;
-  ros::AsyncSpinner spinner;
 
-  // Callback is in the form (rbg, depth, cameraIntrinsics)
+  // Callback is in the form (rgb, depth, cameraIntrinsics)
   explicit KinectSub(const std::function<void(cv::Mat, cv::Mat, cv::Matx33d)>& _externCallback,
                      const SubscriptionOptions _options = SubscriptionOptions());
 
-  void imageCb(const sensor_msgs::ImageConstPtr& rgb_msg, const sensor_msgs::ImageConstPtr& depth_msg,
-               const sensor_msgs::CameraInfoConstPtr& cam_msg);
+  void imageCb(const sensor_msgs::msg::Image::ConstSharedPtr& rgb_msg, 
+               const sensor_msgs::msg::Image::ConstSharedPtr& depth_msg,
+               const sensor_msgs::msg::CameraInfo::ConstSharedPtr& cam_msg);
 };
 
 #endif  // KINECT_SUB_H

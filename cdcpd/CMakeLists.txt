@@ -29,10 +29,16 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 # Find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(arc_utilities REQUIRED)
 find_package(geometric_shapes REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(image_geometry REQUIRED)
 find_package(image_transport REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(pcl_conversions REQUIRED)
+find_package(pcl_ros REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(moveit_core REQUIRED)
 find_package(moveit_msgs REQUIRED)
 find_package(moveit_ros_planning REQUIRED)
 find_package(moveit_ros_planning_interface REQUIRED)
@@ -42,6 +48,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(smmap_models REQUIRED)
 find_package(smmap_utilities REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 
 find_package(OpenCV REQUIRED)
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
@@ -78,10 +85,16 @@ target_include_directories(cdcpd SYSTEM PUBLIC
 # Manually link ROS 2 dependencies
 ament_target_dependencies(cdcpd PUBLIC
         rclcpp
+        arc_utilities
         geometric_shapes
         geometry_msgs
         image_geometry
         image_transport
+        cv_bridge
+        pcl_conversions
+        pcl_ros
+        tf2_ros
+        moveit_core
         moveit_msgs
         moveit_ros_planning
         moveit_ros_planning_interface
@@ -91,6 +104,7 @@ ament_target_dependencies(cdcpd PUBLIC
         smmap_models
         smmap_utilities
         std_msgs
+        visualization_msgs
         )
 
 target_link_libraries(cdcpd PUBLIC
@@ -155,6 +169,11 @@ ament_target_dependencies(cdcpd_node
         sensor_msgs
         geometry_msgs
         std_msgs
+        pcl_conversions
+        tf2_ros
+        visualization_msgs
+        cv_bridge
+        image_transport
         )
 target_link_libraries(cdcpd_node PRIVATE cdcpd)
 
@@ -167,6 +186,11 @@ ament_target_dependencies(cdcpd_offline
         sensor_msgs
         geometry_msgs
         std_msgs
+        pcl_conversions
+        tf2_ros
+        visualization_msgs
+        cv_bridge
+        image_transport
         )
 target_link_libraries(cdcpd_offline PRIVATE cdcpd)
 
@@ -179,10 +203,16 @@ install(TARGETS
 ament_export_targets(cdcpd-targets HAS_LIBRARY_TARGET)
 ament_export_dependencies(
         rclcpp
+        arc_utilities
         geometric_shapes
         geometry_msgs
         image_geometry
         image_transport
+        cv_bridge
+        pcl_conversions
+        pcl_ros
+        tf2_ros
+        moveit_core
         moveit_msgs
         moveit_ros_planning
         moveit_ros_planning_interface
@@ -192,6 +222,7 @@ ament_export_dependencies(
         smmap_models
         smmap_utilities
         std_msgs
+        visualization_msgs
         OpenCV
         Eigen3
         GUROBI

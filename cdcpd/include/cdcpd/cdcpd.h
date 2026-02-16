@@ -6,7 +6,7 @@
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/io/pcd_io.h>
 
-#include <arc_utilities/ros_helpers.hpp>
+#include <rclcpp/rclcpp.hpp>
 #include <arc_utilities/ostream_operators.hpp>
 
 #include <smmap_models/constraint_jacobian_model.h>
@@ -104,8 +104,7 @@ class CDCPD
         float zeta = 10.0,
         float obstacle_cost_weight = 1.0);
 
-  CDCPD(ros::NodeHandle nh,
-        ros::NodeHandle ph,
+  CDCPD(rclcpp::Node::SharedPtr node,
         PointCloud::ConstPtr template_cloud,
         const Eigen::Matrix2Xi &_template_edges,
         bool use_recovery = false,
@@ -169,8 +168,7 @@ class CDCPD
                            const smmap::AllGrippersSinglePose &q_config,
                            int pred_choice);
 
-  ros::NodeHandle nh;
-  ros::NodeHandle ph;
+  rclcpp::Node::SharedPtr node;
 
   std::unique_ptr<smmap::ConstraintJacobianModel> constraint_jacobian_model;
   std::unique_ptr<smmap::DiminishingRigidityModel> diminishing_rigidity_model;

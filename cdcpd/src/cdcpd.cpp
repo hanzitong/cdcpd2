@@ -6,7 +6,7 @@
 
 #include <Eigen/Dense>
 #include <algorithm>
-#include <arc_utilities/ros_helpers.hpp>
+#include <rclcpp/rclcpp.hpp>
 #include <cassert>
 #include <chrono>
 #include <cmath>
@@ -396,14 +396,13 @@ Matrix3Xd CDCPD::predict(const Matrix3Xd &P, const smmap::AllGrippersSinglePoseD
 CDCPD::CDCPD(PointCloud::ConstPtr template_cloud,  // this needs a different data-type for python
              const Matrix2Xi &template_edges, const bool use_recovery, const double alpha, const double beta,
              const double lambda, const double k, const float zeta, const float obstacle_cost_weight)
-    : CDCPD(ros::NodeHandle(), ros::NodeHandle("~"), template_cloud, template_edges, use_recovery, alpha, beta, lambda,
+    : CDCPD(nullptr, template_cloud, template_edges, use_recovery, alpha, beta, lambda,
             k, zeta, obstacle_cost_weight) {}
 
-CDCPD::CDCPD(ros::NodeHandle nh, ros::NodeHandle ph, PointCloud::ConstPtr template_cloud,
+CDCPD::CDCPD(rclcpp::Node::SharedPtr node, PointCloud::ConstPtr template_cloud,
              const Matrix2Xi &_template_edges, const bool use_recovery, const double alpha, const double beta,
              const double lambda, const double k, const float zeta, const float obstacle_cost_weight)
-    : nh(nh),
-      ph(ph),
+    : node(node),
       original_template(template_cloud->getMatrixXfMap().topRows(3)),
       template_edges(_template_edges),
       last_lower_bounding_box(original_template.rowwise().minCoeff()),       // TODO make configurable?
