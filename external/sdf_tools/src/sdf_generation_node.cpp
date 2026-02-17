@@ -1,21 +1,21 @@
-#include <ros/ros.h>
-#include "sdf_tools/SDF.h"
+#include <rclcpp/rclcpp.hpp>
+#include "sdf_tools/msg/sdf.hpp"
 #include "sdf_tools/sdf_builder.hpp"
 #include <arc_utilities/eigen_helpers_conversions.hpp>
 #include <time.h>
 
-visualization_msgs::Marker ExportCollisionMapForDisplay(VoxelGrid::VoxelGrid<uint8_t>& collision_map, std::string frame, float alpha)
+visualization_msgs::msg::Marker ExportCollisionMapForDisplay(VoxelGrid::VoxelGrid<uint8_t>& collision_map, std::string frame, float alpha)
 {
     // Assemble a visualization_markers::Marker representation of the SDF to display in RViz
-    visualization_msgs::Marker display_rep;
+    visualization_msgs::msg::Marker display_rep;
     // Populate the header
     display_rep.header.frame_id = frame;
     // Populate the options
     display_rep.ns = "collision_map_display";
     display_rep.id = 1;
-    display_rep.type = visualization_msgs::Marker::CUBE_LIST;
-    display_rep.action = visualization_msgs::Marker::ADD;
-    display_rep.lifetime = ros::Duration(0.0);
+    display_rep.type = visualization_msgs::msg::Marker::CUBE_LIST;
+    display_rep.action = visualization_msgs::msg::Marker::ADD;
+    display_rep.lifetime = rclcpp::Duration(std::chrono::duration<double>(0.0));
     display_rep.frame_locked = false;
     const Eigen::Isometry3d base_transform = Eigen::Isometry3d::Identity();
     display_rep.pose = EigenHelpersConversions::EigenIsometry3dToGeometryPose(base_transform);
@@ -35,13 +35,13 @@ visualization_msgs::Marker ExportCollisionMapForDisplay(VoxelGrid::VoxelGrid<uin
                 {
                     // Convert cell indices into a real-world location
                     const Eigen::Vector4d location = collision_map.GridIndexToLocation(x_index, y_index, z_index);
-                    geometry_msgs::Point new_point;
+                    geometry_msgs::msg::Point new_point;
                     new_point.x = location(0);
                     new_point.y = location(1);
                     new_point.z = location(2);
                     display_rep.points.push_back(new_point);
                     // Color it
-                    std_msgs::ColorRGBA new_color;
+                    std_msgs::msg::ColorRGBA new_color;
                     new_color.a = alpha;
                     new_color.b = 0.0;
                     new_color.g = 0.0;
@@ -62,7 +62,7 @@ int main(int argc, char** argv)
 {
     //test_voxel_grid();
     ros::init(argc, argv, "planning_scene_SDF_generator");
-    ROS_INFO("Starting SDF from planning scene generator...");
+    RCLCPP_INFO(rclcpp::get_logger("sdf_tools"), "Starting SDF from planning scene generator...");
     ros::NodeHandle nh;
     ros::NodeHandle nhp("~");
     std::string frame;
@@ -80,11 +80,11 @@ int main(int argc, char** argv)
     origin_rotation.setIdentity();
     Eigen::Isometry3d origin_transform = origin_translation * origin_rotation;
     sdf_tools::SDF_Builder sdf_builder(nh, origin_transform, frame, x_size, y_size, z_size, resolution, INFINITY, "get_planning_scene");
-    ROS_INFO("...startup complete");
+    RCLCPP_INFO(rclcpp::get_logger("sdf_tools"), "...startup complete");
     ////////////////////
     ///// Display! /////
     ////////////////////
-    ros::Publisher viz_pub = nh.advertise<visualization_msgs::Marker>("sdf_markers", 1, true);
+    ros::Publisher viz_pub = nh.advertise<visualization_msgs::msg::Marker>("sdf_markers", 1, true);
     ros::Rate spin_rate(10);
     while (ros::ok())
     {

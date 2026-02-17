@@ -82,8 +82,8 @@ PYBIND11_MODULE(pysdf_tools, m)
       .def("ExtractSignedDistanceField", &CollisionMapGrid::ExtractSignedDistanceField);
 
   m.def("DecompressBytes", ZlibHelpers::DecompressBytes);
-  m.def("DeserializeFixedSizePODFloat", arc_utilities::DeserializeFixedSizePOD<float>);
-  m.def("DeserializeFixedSizePODd", arc_utilities::DeserializeFixedSizePOD<std::vector<double>>);
+  m.def("DeserializeFixedSizePODFloat", arm_utilities::DeserializeFixedSizePOD<float>);
+  m.def("DeserializeFixedSizePODd", arm_utilities::DeserializeFixedSizePOD<std::vector<double>>);
 
   using VoxelGridVecd = VoxelGrid::VoxelGrid<std::vector<double>>;
   std::pair<std::vector<double> const &, bool>(VoxelGridVecd::*

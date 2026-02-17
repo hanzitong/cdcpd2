@@ -495,7 +495,7 @@ CollisionMapGrid::ExportSurfacesForSeparateDisplay(
   return display_messages;
 }
 
-visualization_msgs::Marker
+visualization_msgs::msg::Marker
 CollisionMapGrid::ExportConnectedComponentsForDisplay(
     const bool color_unknown_components) const
 {

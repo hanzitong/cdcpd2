@@ -914,7 +914,7 @@ TaggedObjectCollisionMapGrid::ExportForDisplayUniqueNs(
   return display_rep_pruned;
 }
 
-visualization_msgs::Marker
+visualization_msgs::msg::Marker
 TaggedObjectCollisionMapGrid::ExportContourOnlyForDisplay(
     const float alpha,
     const std::vector<uint32_t>& objects_to_draw) const
@@ -1047,7 +1047,7 @@ TaggedObjectCollisionMapGrid::ExportContourOnlyForDisplayUniqueNs(
 // Note that this function will use a default color for objects that a color
 // is not provided for (other than object ID 0, which is ignored by
 // MakeAllObjectSDFs)
-visualization_msgs::Marker
+visualization_msgs::msg::Marker
 TaggedObjectCollisionMapGrid::ExportContourOnlyForDisplay(
     std::map<uint32_t, std_msgs::msg::ColorRGBA> color_map) const
 {
@@ -1185,7 +1185,7 @@ TaggedObjectCollisionMapGrid::ExportContourOnlyForDisplayUniqueNs(
 
 
 
-visualization_msgs::Marker
+visualization_msgs::msg::Marker
 TaggedObjectCollisionMapGrid::ExportForDisplayOccupancyOnly(
     const std_msgs::msg::ColorRGBA& collision_color,
     const std_msgs::msg::ColorRGBA& free_color,
@@ -1232,7 +1232,7 @@ TaggedObjectCollisionMapGrid::ExportForDisplayOccupancyOnly(
   return display_rep;
 }
 
-visualization_msgs::Marker
+visualization_msgs::msg::Marker
 TaggedObjectCollisionMapGrid::ExportConnectedComponentsForDisplay(
     const bool color_unknown_components) const
 {
@@ -1282,7 +1282,7 @@ TaggedObjectCollisionMapGrid::ExportConnectedComponentsForDisplay(
   return display_rep;
 }
 
-visualization_msgs::Marker
+visualization_msgs::msg::Marker
 TaggedObjectCollisionMapGrid::ExportConvexSegmentForDisplay(
     const uint32_t object_id,
     const uint32_t convex_segment) const
@@ -1321,7 +1321,7 @@ TaggedObjectCollisionMapGrid::ExportConvexSegmentForDisplay(
           else
           {
             const auto color =
-                EigenHelpers::RGBAColorBuilder<std_msgs::msg::ColorRGBA>
+                arm_helpers::RGBAColorBuilder<std_msgs::msg::ColorRGBA>
                   ::InterpolateHotToCold(convex_segment, 1.0,
                                          (double)number_of_convex_segments_);
             display_rep.colors.push_back(color);
@@ -1333,7 +1333,7 @@ TaggedObjectCollisionMapGrid::ExportConvexSegmentForDisplay(
   return display_rep;
 }
 
-visualization_msgs::Marker
+visualization_msgs::msg::Marker
 TaggedObjectCollisionMapGrid::ExportSurfaceForDisplay(
     const std::unordered_map<GRID_INDEX, uint8_t>& surface,
     const std_msgs::msg::ColorRGBA& surface_color) const

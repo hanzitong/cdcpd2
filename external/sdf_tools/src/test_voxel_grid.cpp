@@ -1,11 +1,11 @@
 #include <chrono>
 #include <random>
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 #include <arc_utilities/serialization.hpp>
 #include <arc_utilities/voxel_grid.hpp>
 #include <arc_utilities/pretty_print.hpp>
 #include <arc_utilities/dynamic_spatial_hashed_voxel_grid.hpp>
-#include <visualization_msgs/MarkerArray.h>
+#include <visualization_msgs/msg/marker_array.hpp>
 #include "sdf_tools/collision_map.hpp"
 #include "sdf_tools/dynamic_spatial_hashed_collision_map.hpp"
 #include "sdf_tools/sdf.hpp"
@@ -159,8 +159,8 @@ void test_voxel_grid_serialization()
         }
     }
     std::vector<uint8_t> buffer;
-    VoxelGrid::VoxelGrid<int>::Serialize(test_grid, buffer, arc_utilities::SerializeFixedSizePOD<int>);
-    const VoxelGrid::VoxelGrid<int> read_grid = VoxelGrid::VoxelGrid<int>::Deserialize(buffer, 0, arc_utilities::DeserializeFixedSizePOD<int>).first;
+    VoxelGrid::VoxelGrid<int>::Serialize(test_grid, buffer, arm_utilities::SerializeFixedSizePOD<int>);
+    const VoxelGrid::VoxelGrid<int> read_grid = VoxelGrid::VoxelGrid<int>::Deserialize(buffer, 0, arm_utilities::DeserializeFixedSizePOD<int>).first;
     // Check the values
     int check_index = 0;
     bool pass = true;
@@ -272,7 +272,7 @@ bool get_random_bool(std::default_random_engine& generator)
     }
 }
 
-visualization_msgs::MarkerArray test_dsh_collision_map(std::default_random_engine& generator)
+visualization_msgs::msg::MarkerArray test_dsh_collision_map(std::default_random_engine& generator)
 {
     sdf_tools::COLLISION_CELL default_cell(0.0);
     sdf_tools::COLLISION_CELL filled_cell(1.0);
@@ -295,23 +295,23 @@ visualization_msgs::MarkerArray test_dsh_collision_map(std::default_random_engin
         }
     }
     // Get the Rviz markers
-    std_msgs::ColorRGBA filled_color;
+    std_msgs::msg::ColorRGBA filled_color;
     filled_color.a = 1.0;
     filled_color.b = 0.0;
     filled_color.g = 0.0;
     filled_color.r = 1.0;
-    std_msgs::ColorRGBA free_color;
+    std_msgs::msg::ColorRGBA free_color;
     free_color.a = 0.1;
     free_color.b = 0.0;
     free_color.g = 1.0;
     free_color.r = 0.0;
-    std_msgs::ColorRGBA unknown_color;
+    std_msgs::msg::ColorRGBA unknown_color;
     unknown_color.a = 0.5;
     unknown_color.b = 1.0;
     unknown_color.g = 0.0;
     unknown_color.r = 0.0;
-    std::vector<visualization_msgs::Marker> display_markers = test_col_map.ExportForDisplay(filled_color, free_color, unknown_color);
-    visualization_msgs::MarkerArray display_rep;
+    std::vector<visualization_msgs::msg::Marker> display_markers = test_col_map.ExportForDisplay(filled_color, free_color, unknown_color);
+    visualization_msgs::msg::MarkerArray display_rep;
     display_rep.markers = display_markers;
     return display_rep;
 }
@@ -323,12 +323,12 @@ int main(int argc, char** argv)
     std::default_random_engine generator(seed);
     ros::init(argc, argv, "test_voxel_grid");
     ros::NodeHandle nh;
-    ros::Publisher display_pub = nh.advertise<visualization_msgs::MarkerArray>("display_test_voxel_grid", 1, true);
+    ros::Publisher display_pub = nh.advertise<visualization_msgs::msg::MarkerArray>("display_test_voxel_grid", 1, true);
     test_voxel_grid_indices();
     test_voxel_grid_locations();
     test_voxel_grid_serialization();
     test_dsh_voxel_grid_locations();
-    visualization_msgs::MarkerArray display_rep = test_dsh_collision_map(generator);
+    visualization_msgs::msg::MarkerArray display_rep = test_dsh_collision_map(generator);
     display_pub.publish(display_rep);
     ros::spin();
     return 0;

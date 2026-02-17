@@ -6,7 +6,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <Eigen/Geometry>
-#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/msg/marker.hpp>
 #include <arc_utilities/voxel_grid.hpp>
 #include <arc_utilities/pretty_print.hpp>
 #include <sdf_tools/sdf.hpp>

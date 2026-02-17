@@ -8,7 +8,7 @@
 
 void test_compute_convex_segments(
     const std::function<void(
-      const visualization_msgs::MarkerArray&)>& display_fn)
+      const visualization_msgs::msg::MarkerArray&)>& display_fn)
 {
   const double res = 1.0;
   const int64_t x_size = 100;
@@ -39,12 +39,12 @@ void test_compute_convex_segments(
       }
     }
   }
-  visualization_msgs::MarkerArray display_markers;
-  visualization_msgs::Marker env_marker = tocmap.ExportForDisplay();
+  visualization_msgs::msg::MarkerArray display_markers;
+  visualization_msgs::msg::Marker env_marker = tocmap.ExportForDisplay();
   env_marker.id = 1;
   env_marker.ns = "environment";
   display_markers.markers.push_back(env_marker);
-  visualization_msgs::Marker components_marker = tocmap.ExportConnectedComponentsForDisplay(false);
+  visualization_msgs::msg::Marker components_marker = tocmap.ExportConnectedComponentsForDisplay(false);
   components_marker.id = 1;
   components_marker.ns = "environment_components";
   display_markers.markers.push_back(components_marker);
@@ -57,7 +57,7 @@ void test_compute_convex_segments(
   {
     for (uint32_t convex_segment = 1u; convex_segment <= number_of_convex_segments_manual_border; convex_segment++)
     {
-      visualization_msgs::Marker segment_marker = tocmap.ExportConvexSegmentForDisplay(object_id, convex_segment);
+      visualization_msgs::msg::Marker segment_marker = tocmap.ExportConvexSegmentForDisplay(object_id, convex_segment);
       if (segment_marker.points.size() > 0)
       {
         segment_marker.ns += "_no_border";
@@ -73,7 +73,7 @@ void test_compute_convex_segments(
   {
     for (uint32_t convex_segment = 1u; convex_segment <= number_of_convex_segments_virtual_border; convex_segment++)
     {
-      visualization_msgs::Marker segment_marker = tocmap.ExportConvexSegmentForDisplay(object_id, convex_segment);
+      visualization_msgs::msg::Marker segment_marker = tocmap.ExportConvexSegmentForDisplay(object_id, convex_segment);
       if (segment_marker.points.size() > 0)
       {
         segment_marker.ns += "_virtual_border";
@@ -85,7 +85,7 @@ void test_compute_convex_segments(
       = tocmap.ExtractSignedDistanceField(std::numeric_limits<float>::infinity(), std::vector<uint32_t>(), true, false);
   std::cout << "(no border) SDF extrema: " << PrettyPrint::PrettyPrint(sdf_result.second) << std::endl;
   const sdf_tools::SignedDistanceField& sdf = sdf_result.first;
-  visualization_msgs::Marker sdf_marker = sdf.ExportForDisplay(1.0f);
+  visualization_msgs::msg::Marker sdf_marker = sdf.ExportForDisplay(1.0f);
   sdf_marker.id = 1;
   sdf_marker.ns = "environment_sdf_no_border";
   display_markers.markers.push_back(sdf_marker);
@@ -93,7 +93,7 @@ void test_compute_convex_segments(
       = tocmap.ExtractSignedDistanceField(std::numeric_limits<float>::infinity(), std::vector<uint32_t>(), true, true);
   std::cout << "(virtual border) SDF extrema: " << PrettyPrint::PrettyPrint(virtual_border_sdf_result.second) << std::endl;
   const sdf_tools::SignedDistanceField& virtual_border_sdf = virtual_border_sdf_result.first;
-  visualization_msgs::Marker virtual_border_sdf_marker = virtual_border_sdf.ExportForDisplay(1.0f);
+  visualization_msgs::msg::Marker virtual_border_sdf_marker = virtual_border_sdf.ExportForDisplay(1.0f);
   virtual_border_sdf_marker.id = 1;
   virtual_border_sdf_marker.ns = "environment_sdf_virtual_border";
   display_markers.markers.push_back(virtual_border_sdf_marker);
@@ -115,22 +115,22 @@ void test_compute_convex_segments(
           const double distance = (extrema - location.block<3, 1>(0, 0)).norm();
           if (distance < sdf.GetResolution())
           {
-            visualization_msgs::Marker maxima_rep;
+            visualization_msgs::msg::Marker maxima_rep;
             // Populate the header
             maxima_rep.header.frame_id = "world";
             // Populate the options
             maxima_rep.ns = "extrema";
             maxima_rep.id = (int32_t)sdf.HashDataIndex(x_idx, y_idx, z_idx);
-            maxima_rep.action = visualization_msgs::Marker::ADD;
-            maxima_rep.lifetime = ros::Duration(0.0);
+            maxima_rep.action = visualization_msgs::msg::Marker::ADD;
+            maxima_rep.lifetime = rclcpp::Duration(std::chrono::duration<double>(0.0));
             maxima_rep.frame_locked = false;
             maxima_rep.pose.position = EigenHelpersConversions::EigenVector4dToGeometryPoint(location);
             maxima_rep.pose.orientation = EigenHelpersConversions::EigenQuaterniondToGeometryQuaternion(Eigen::Quaterniond::Identity());
-            maxima_rep.type = visualization_msgs::Marker::SPHERE;
+            maxima_rep.type = visualization_msgs::msg::Marker::SPHERE;
             maxima_rep.scale.x = sdf.GetResolution();
             maxima_rep.scale.y = sdf.GetResolution();
             maxima_rep.scale.z = sdf.GetResolution();
-            maxima_rep.color = arc_helpers::RGBAColorBuilder<std_msgs::ColorRGBA>::MakeFromFloatColors(1.0, 0.5, 0.0, 1.0);
+            maxima_rep.color = arm_helpers::RGBAColorBuilder<std_msgs::msg::ColorRGBA>::MakeFromFloatColors(1.0, 0.5, 0.0, 1.0);
             display_markers.markers.push_back(maxima_rep);
           }
         }
@@ -161,10 +161,10 @@ int main(int argc, char** argv)
   ros::init(argc, argv, "compute_convex_segments_test");
   ros::NodeHandle nh;
   ros::Publisher display_pub
-      = nh.advertise<visualization_msgs::MarkerArray>(
+      = nh.advertise<visualization_msgs::msg::MarkerArray>(
           "display_test_voxel_grid", 1, true);
-  const std::function<void(const visualization_msgs::MarkerArray&)>& display_fn
-      = [&] (const visualization_msgs::MarkerArray& markers)
+  const std::function<void(const visualization_msgs::msg::MarkerArray&)>& display_fn
+      = [&] (const visualization_msgs::msg::MarkerArray& markers)
   {
     display_pub.publish(markers);
   };

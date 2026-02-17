@@ -8,7 +8,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <Eigen/Geometry>
-#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/msg/marker.hpp>
 #include <arc_utilities/eigen_helpers_conversions.hpp>
 #include <arc_utilities/voxel_grid.hpp>
 #include <arc_utilities/dynamic_spatial_hashed_voxel_grid.hpp>
@@ -82,21 +82,21 @@ namespace sdf_tools
         return collision_field_.GetOriginTransform();
     }
 
-    std::vector<visualization_msgs::Marker> DynamicSpatialHashedCollisionMapGrid::ExportForDisplay(const std_msgs::ColorRGBA& collision_color, const std_msgs::ColorRGBA& free_color, const std_msgs::ColorRGBA& unknown_color) const
+    std::vector<visualization_msgs::msg::Marker> DynamicSpatialHashedCollisionMapGrid::ExportForDisplay(const std_msgs::msg::ColorRGBA& collision_color, const std_msgs::msg::ColorRGBA& free_color, const std_msgs::msg::ColorRGBA& unknown_color) const
     {
         // Assemble a visualization_markers::Marker representation of the SDF to display in RViz
         // We make one marker for the individual cells, and another for the chunks, but we return 0, 1, or 2
         // markers depending on if any chenks or cells can be drawn.
         // First, the chunks
-        visualization_msgs::Marker chunks_display_rep;
+        visualization_msgs::msg::Marker chunks_display_rep;
         // Populate the header
         chunks_display_rep.header.frame_id = frame_;
         // Populate the options
         chunks_display_rep.ns = "dynamic_spatial_hashed_collision_map_chunks_display";
         chunks_display_rep.id = 1;
-        chunks_display_rep.type = visualization_msgs::Marker::CUBE_LIST;
-        chunks_display_rep.action = visualization_msgs::Marker::ADD;
-        chunks_display_rep.lifetime = ros::Duration(0.0);
+        chunks_display_rep.type = visualization_msgs::msg::Marker::CUBE_LIST;
+        chunks_display_rep.action = visualization_msgs::msg::Marker::ADD;
+        chunks_display_rep.lifetime = rclcpp::Duration(std::chrono::duration<double>(0.0));
         chunks_display_rep.frame_locked = false;
         const Eigen::Isometry3d base_transform = Eigen::Isometry3d::Identity();
         chunks_display_rep.pose = EigenHelpersConversions::EigenIsometry3dToGeometryPose(base_transform);
@@ -105,15 +105,15 @@ namespace sdf_tools
         chunks_display_rep.scale.y = chunk_sizes[1];
         chunks_display_rep.scale.z = chunk_sizes[2];
         // Second, the cells
-        visualization_msgs::Marker cells_display_rep;
+        visualization_msgs::msg::Marker cells_display_rep;
         // Populate the header
         cells_display_rep.header.frame_id = frame_;
         // Populate the options
         cells_display_rep.ns = "dynamic_spatial_hashed_collision_map_cells_display";
         cells_display_rep.id = 1;
-        cells_display_rep.type = visualization_msgs::Marker::CUBE_LIST;
-        cells_display_rep.action = visualization_msgs::Marker::ADD;
-        cells_display_rep.lifetime = ros::Duration(0.0);
+        cells_display_rep.type = visualization_msgs::msg::Marker::CUBE_LIST;
+        cells_display_rep.action = visualization_msgs::msg::Marker::ADD;
+        cells_display_rep.lifetime = rclcpp::Duration(std::chrono::duration<double>(0.0));
         cells_display_rep.frame_locked = false;
         cells_display_rep.pose = EigenHelpersConversions::EigenIsometry3dToGeometryPose(base_transform);
         std::vector<double> cell_sizes = collision_field_.GetCellSizes();
@@ -133,7 +133,7 @@ namespace sdf_tools
                 std::vector<double> cell_location_in_grid = current_chunk.GetIndexLocationInGrid(0, 0, 0);
                 Eigen::Vector3d grid_location(cell_location_in_grid[0], cell_location_in_grid[1], cell_location_in_grid[2]);
                 Eigen::Vector3d location = grid_transform * grid_location;
-                geometry_msgs::Point new_point;
+                geometry_msgs::msg::Point new_point;
                 new_point.x = location.x();
                 new_point.y = location.y();
                 new_point.z = location.z();
@@ -163,7 +163,7 @@ namespace sdf_tools
                             std::vector<double> cell_location_in_grid = current_chunk.GetIndexLocationInGrid(x_index, y_index, z_index);
                             Eigen::Vector3d grid_location(cell_location_in_grid[0], cell_location_in_grid[1], cell_location_in_grid[2]);
                             Eigen::Vector3d location = grid_transform * grid_location;
-                            geometry_msgs::Point new_point;
+                            geometry_msgs::msg::Point new_point;
                             new_point.x = location.x();
                             new_point.y = location.y();
                             new_point.z = location.z();
@@ -186,7 +186,7 @@ namespace sdf_tools
             }
         }
         // Assemble the data to return
-        std::vector<visualization_msgs::Marker> display_markers;
+        std::vector<visualization_msgs::msg::Marker> display_markers;
         if (chunks_display_rep.points.size() > 0)
         {
             display_markers.push_back(chunks_display_rep);

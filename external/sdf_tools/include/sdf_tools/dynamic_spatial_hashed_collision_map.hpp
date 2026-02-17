@@ -2,7 +2,7 @@
 #include <vector>
 #include <string>
 #include <Eigen/Geometry>
-#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/msg/marker.hpp>
 #include <arc_utilities/voxel_grid.hpp>
 #include <arc_utilities/dynamic_spatial_hashed_voxel_grid.hpp>
 #include <sdf_tools/collision_map.hpp>
@@ -48,7 +48,7 @@ namespace sdf_tools
 
         Eigen::Isometry3d GetOriginTransform() const;
 
-        std::vector<visualization_msgs::Marker> ExportForDisplay(const std_msgs::ColorRGBA& collision_color, const std_msgs::ColorRGBA& free_color, const std_msgs::ColorRGBA& unknown_color) const;
+        std::vector<visualization_msgs::msg::Marker> ExportForDisplay(const std_msgs::msg::ColorRGBA& collision_color, const std_msgs::msg::ColorRGBA& free_color, const std_msgs::msg::ColorRGBA& unknown_color) const;
     };
 }
 

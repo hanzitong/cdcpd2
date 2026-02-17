@@ -1,4 +1,4 @@
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
@@ -36,7 +36,7 @@ public:
         sdf_preview_pub_ = it_.advertise(sdf_preview_topic, 1, true);
         sdf_raw_pub_ = it_.advertise(sdf_raw_topic, 1, true);
         std::string transport_in = binary_sub_.getTransport();
-        ROS_INFO("Subscribed using %s for transport", transport_in.c_str());
+        RCLCPP_INFO(rclcpp::get_logger("sdf_tools"), "Subscribed using %s for transport", transport_in.c_str());
     }
 
     void loop()
@@ -49,7 +49,7 @@ public:
 
     void update_sdf(cv::Mat& image)
     {
-        ROS_DEBUG("Making intermediate containers for SDF");
+        RCLCPP_DEBUG(rclcpp::get_logger("sdf_tools"), "Making intermediate containers for SDF");
         std::vector< std::vector<sdf_cell_t> > empty_cells;
         std::vector< std::vector<sdf_cell_t> > filled_cells;
         // Resize the fields
@@ -64,7 +64,7 @@ public:
             filled_cells[i].resize(width);
             distance_field_[i].resize(width);
         }
-        ROS_DEBUG("Marking filled/empty pixels for SDF");
+        RCLCPP_DEBUG(rclcpp::get_logger("sdf_tools"), "Marking filled/empty pixels for SDF");
         // Go through the image and add filled/empty pixels to the corresponding fields
         sdf_cell_t empty_cell;
         empty_cell.dx = INFINITY;
@@ -89,11 +89,11 @@ public:
                 }
             }
         }
-        ROS_DEBUG("Running 8SSEDT on intermediate containers");
+        RCLCPP_DEBUG(rclcpp::get_logger("sdf_tools"), "Running 8SSEDT on intermediate containers");
         // Run the 8SSEDT algorithm to compute the partial SDFs
         update_partial_sdf(filled_cells);
         update_partial_sdf(empty_cells);
-        ROS_DEBUG("Computing the final SDF");
+        RCLCPP_DEBUG(rclcpp::get_logger("sdf_tools"), "Computing the final SDF");
         // Combine the partial fields to form the SDF
         max_distance_ = 0.0;
         min_distance_ = 0.0;
@@ -227,7 +227,7 @@ public:
 
     void camera_cb(const sensor_msgs::ImageConstPtr& image)
     {
-        ROS_DEBUG("Got new image to resize and SDF");
+        RCLCPP_DEBUG(rclcpp::get_logger("sdf_tools"), "Got new image to resize and SDF");
         // Convert to OpenCV
         cv_bridge::CvImagePtr cv_ptr;
         try
@@ -236,16 +236,16 @@ public:
         }
         catch (cv_bridge::Exception& e)
         {
-            ROS_ERROR("cv_bridge exception: %s", e.what());
+            RCLCPP_ERROR(rclcpp::get_logger("sdf_tools"), "cv_bridge exception: %s", e.what());
             return;
         }
         // Make destination
         cv::Mat binary; //(cv::Size(resized_width_, resized_height_), CV_8UC1);
         binary = cv_ptr->image;
         // Compute the SDF for the image
-        ROS_DEBUG("Attempting to compute SDF of image...");
+        RCLCPP_DEBUG(rclcpp::get_logger("sdf_tools"), "Attempting to compute SDF of image...");
         update_sdf(binary);
-        ROS_DEBUG("...SDF compute finished");
+        RCLCPP_DEBUG(rclcpp::get_logger("sdf_tools"), "...SDF compute finished");
         // Publish the raw SDF
         cv::Mat raw_sdf_image(cv::Size(binary.cols, binary.rows), CV_32FC2);
         for (int i = 0; i < binary.rows; i++)
@@ -304,14 +304,14 @@ public:
         sdf_preview_converted.toImageMsg(sdf_preview_image);
         // Republish
         sdf_preview_pub_.publish(sdf_preview_image);
-        ROS_DEBUG("Resize + SDF finished");
+        RCLCPP_DEBUG(rclcpp::get_logger("sdf_tools"), "Resize + SDF finished");
     }
 };
 
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "image_sdf");
-    ROS_INFO("Starting SDF from image generator...");
+    RCLCPP_INFO(rclcpp::get_logger("sdf_tools"), "Starting SDF from image generator...");
     ros::NodeHandle nh;
     ros::NodeHandle nhp("~");
     std::string binary_base_topic;
@@ -321,7 +321,7 @@ int main(int argc, char** argv)
     nhp.param(std::string("sdf_preview_topic"), sdf_preview_topic, std::string("camera/rgb/sdf"));
     nhp.param(std::string("sdf_raw_topic"), sdf_raw_topic, std::string("camera/rgb/sdf_raw"));
     ImageSDF processor(nh, binary_base_topic, sdf_preview_topic, sdf_raw_topic);
-    ROS_INFO("...startup complete");
+    RCLCPP_INFO(rclcpp::get_logger("sdf_tools"), "...startup complete");
     processor.loop();
     return 0;
 }

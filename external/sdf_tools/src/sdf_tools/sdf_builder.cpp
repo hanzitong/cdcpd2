@@ -11,7 +11,7 @@
 #include <sdf_tools/sdf.hpp>
 #include <sdf_tools/sdf_generation.hpp>
 #include <sdf_tools/sdf_builder.hpp>
-#include <sdf_tools/SDF.h>
+#include <sdf_tools/msg/sdf.hpp>
 
 using namespace sdf_tools;
 
@@ -131,7 +131,7 @@ SignedDistanceField SDF_Builder::UpdateSDF(const uint8_t update_mode)
         }
         else
         {
-            ROS_ERROR("No planning scene available");
+            RCLCPP_ERROR(rclcpp::get_logger("sdf_tools"), "No planning scene available");
             throw std::invalid_argument("No planning scene available");
         }
     }
@@ -178,7 +178,7 @@ SignedDistanceField SDF_Builder::UpdateSDF(const uint8_t update_mode)
         }
         else
         {
-            ROS_ERROR("Invalid update mode (mode not recognized)");
+            RCLCPP_ERROR(rclcpp::get_logger("sdf_tools"), "Invalid update mode (mode not recognized)");
             throw std::invalid_argument("Invalid update mode (mode not recognized)");
         }
     }
@@ -192,7 +192,7 @@ const SignedDistanceField& SDF_Builder::GetCachedSDF() const
     }
     else
     {
-        ROS_ERROR("No cached SDF available");
+        RCLCPP_ERROR(rclcpp::get_logger("sdf_tools"), "No cached SDF available");
         throw std::invalid_argument("No cached SDF available");
     }
 }
@@ -212,7 +212,7 @@ VoxelGrid::VoxelGrid<uint8_t> SDF_Builder::UpdateCollisionMap(const uint8_t upda
         }
         else
         {
-            ROS_ERROR("No planning scene available");
+            RCLCPP_ERROR(rclcpp::get_logger("sdf_tools"), "No planning scene available");
             throw std::invalid_argument("No planning scene available");
         }
     }
@@ -259,7 +259,7 @@ VoxelGrid::VoxelGrid<uint8_t> SDF_Builder::UpdateCollisionMap(const uint8_t upda
         }
         else
         {
-            ROS_ERROR("Invalid update mode (mode not recognized)");
+            RCLCPP_ERROR(rclcpp::get_logger("sdf_tools"), "Invalid update mode (mode not recognized)");
             throw std::invalid_argument("Invalid update mode (mode not recognized)");
         }
     }
@@ -273,7 +273,7 @@ const VoxelGrid::VoxelGrid<uint8_t>& SDF_Builder::GetCachedCollisionMap() const
     }
     else
     {
-        ROS_ERROR("No cached Collision Map available");
+        RCLCPP_ERROR(rclcpp::get_logger("sdf_tools"), "No cached Collision Map available");
         throw std::invalid_argument("No cached Collision Map available");
     }
 }

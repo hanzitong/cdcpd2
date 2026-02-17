@@ -1,10 +1,10 @@
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 #include <arc_utilities/voxel_grid.hpp>
 #include <arc_utilities/pretty_print.hpp>
 #include "sdf_tools/collision_map.hpp"
-#include "sdf_tools/CollisionMap.h"
+#include "sdf_tools/msg/collision_map.hpp"
 #include "sdf_tools/sdf.hpp"
-#include "sdf_tools/SDF.h"
+#include "sdf_tools/msg/sdf.hpp"
 
 int main(int argc, char** argv)
 {
@@ -14,11 +14,11 @@ int main(int argc, char** argv)
     // Get a handle to the current node
     ros::NodeHandle nh;
     // Make a publisher for visualization messages
-    ros::Publisher visualization_pub = nh.advertise<visualization_msgs::Marker>("sdf_tools_tutorial_visualization", 1, true);
+    ros::Publisher visualization_pub = nh.advertise<visualization_msgs::msg::Marker>("sdf_tools_tutorial_visualization", 1, true);
     // Make a publisher for serialized CollisionMaps
-    ros::Publisher collision_map_pub = nh.advertise<sdf_tools::CollisionMap>("collision_map_pub", 1, true);
+    ros::Publisher collision_map_pub = nh.advertise<sdf_tools::msg::CollisionMap>("collision_map_pub", 1, true);
     // Make a publisher for serialized SDFs
-    ros::Publisher sdf_pub = nh.advertise<sdf_tools::SDF>("sdf_pub", 1, true);
+    ros::Publisher sdf_pub = nh.advertise<sdf_tools::msg::SDF>("sdf_pub", 1, true);
     // In preparation, we want to set a couple common paramters
     double resolution = 0.25;
     double x_size = 10.0;
@@ -79,22 +79,22 @@ int main(int argc, char** argv)
     // Let's display the results to Rviz
     // First, the CollisionMap itself
     // We need to provide colors to use
-    std_msgs::ColorRGBA collision_color;
+    std_msgs::msg::ColorRGBA collision_color;
     collision_color.r = 1.0;
     collision_color.g = 0.0;
     collision_color.b = 0.0;
     collision_color.a = 0.5;
-    std_msgs::ColorRGBA free_color;
+    std_msgs::msg::ColorRGBA free_color;
     free_color.r = 0.0;
     free_color.g = 1.0;
     free_color.b = 0.0;
     free_color.a = 0.5;
-    std_msgs::ColorRGBA unknown_color;
+    std_msgs::msg::ColorRGBA unknown_color;
     unknown_color.r = 1.0;
     unknown_color.g = 1.0;
     unknown_color.b = 0.0;
     unknown_color.a = 0.5;
-    visualization_msgs::Marker collision_map_marker = collision_map.ExportForDisplay(collision_color, free_color, unknown_color);
+    visualization_msgs::msg::Marker collision_map_marker = collision_map.ExportForDisplay(collision_color, free_color, unknown_color);
     // To be safe, you'll need to set these yourself. The namespace (ns) value should distinguish between different things being displayed
     // while the id value lets you have multiple versions of the same message at once. Always set this to 1 if you only want one copy.
     collision_map_marker.ns = "collision_map";
@@ -102,7 +102,7 @@ int main(int argc, char** argv)
     // Send it off for display
     visualization_pub.publish(collision_map_marker);
     // Now, let's draw the connected components
-    visualization_msgs::Marker connected_components_marker = collision_map.ExportConnectedComponentsForDisplay(false); // Generally, you don't want a special color for unknown [P(occupancy) = 0.5] components
+    visualization_msgs::msg::Marker connected_components_marker = collision_map.ExportConnectedComponentsForDisplay(false); // Generally, you don't want a special color for unknown [P(occupancy) = 0.5] components
     connected_components_marker.ns = "connected_components";
     connected_components_marker.id = 1;
     visualization_pub.publish(connected_components_marker);
@@ -144,7 +144,7 @@ int main(int argc, char** argv)
     std::vector<double> location_gradient_query = sdf.GetGradient(x_location, y_location, z_location, true); // Usually, you want to enable 'edge gradients' i.e. gradients for cells on the edge of the grid that don't have 6 neighbors
     std::cout << "Location gradient query result - gradient " << PrettyPrint::PrettyPrint(location_gradient_query) << std::endl;
     // Let's display the results to Rviz
-    visualization_msgs::Marker sdf_marker = sdf.ExportForDisplay(0.5); // Set the alpha for display
+    visualization_msgs::msg::Marker sdf_marker = sdf.ExportForDisplay(0.5); // Set the alpha for display
     sdf_marker.ns = "sdf";
     sdf_marker.id = 1;
     visualization_pub.publish(sdf_marker);
