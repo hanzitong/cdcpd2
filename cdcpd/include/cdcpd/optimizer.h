@@ -1,45 +1,51 @@
-#ifndef OPTIMIZER_H
-#define OPTIMIZER_H
+#pragma once
+
+#include <Eigen/Geometry>
+#include <iostream>
+#include <string>
+#include <vector>
+
+#include <moveit_msgs/msg/collision_object.hpp>
+#include <geometry_msgs/msg/pose.hpp>
+#include <shape_msgs/msg/solid_primitive.hpp>
+#include <shape_msgs/msg/plane.hpp>
+#include <shape_msgs/msg/mesh.hpp>
+
+// Include OSQP before OpenCV to avoid macro conflicts
+#ifdef USE_OSQP
+// OSQP will be included only in optimizer.cpp to avoid macro conflicts
+#endif
 
 #include <CGAL/AABB_face_graph_triangle_primitive.h>
 #include <CGAL/AABB_traits.h>
 #include <CGAL/AABB_tree.h>
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <CGAL/Polygon_mesh_processing/compute_normal.h>
-#include <CGAL/Polygon_mesh_processing/detect_features.h>
-#include <CGAL/Polygon_mesh_processing/locate.h>
-#include <CGAL/Polygon_mesh_processing/refine.h>
-#include <CGAL/Polygon_mesh_processing/smooth_mesh.h>
+#include <CGAL/Polyhedron_3.h>
 #include <CGAL/Surface_mesh.h>
-#include <CGAL/convex_hull_3.h>
+#include <CGAL/boost/graph/convert_nef_polyhedron_to_polygon_mesh.h>
+#include <CGAL/convex_decomposition_3.h>
+#include <CGAL/minkowski_sum_3.h>
 #include <CGAL/subdivision_method_3.h>
-#ifdef USE_GUROBI
-#include <gurobi_c++.h>
-#endif
-#include <moveit_msgs/msg/collision_object.hpp>
 
-#include <Eigen/Dense>
-#include <algorithm>
+// OSQP is used for optimization (GUROBI support removed)
 
-#include "obs_util.h"
-
+// Forward declarations
 struct FixedPoint {
   Eigen::Vector3f position;
   int template_index;
 };
 
-typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
-typedef K::FT FT;
-typedef K::Point_3 Point_3;
-typedef K::Ray_3 Ray_3;
-typedef K::Vector_3 Vector;
-typedef CGAL::Surface_mesh<Point_3> Mesh;
-typedef boost::graph_traits<Mesh>::vertex_descriptor vertex_descriptor;
-typedef boost::graph_traits<Mesh>::face_descriptor face_descriptor;
-typedef CGAL::AABB_face_graph_triangle_primitive<Mesh> AABB_face_graph_primitive;
-typedef CGAL::AABB_traits<K, AABB_face_graph_primitive> AABB_face_graph_traits;
+using Matrix3Xf = Eigen::Matrix<float, 3, Eigen::Dynamic>;
+using Matrix2Xi = Eigen::Matrix<int, 2, Eigen::Dynamic>;
+using Vector3f = Eigen::Vector3f;
+using RowVector3f = Eigen::RowVector3f;
 
-using Objects = std::vector<moveit_msgs::CollisionObject>;
+using Objects = std::vector<moveit_msgs::msg::CollisionObject>;
+using Points = Eigen::Matrix3Xf;
+using Normals = Eigen::Matrix3Xf;
+using Point = Eigen::Vector3f;
+using Normal = Eigen::Vector3f;
+using PointNormal = std::tuple<Point, Normal>;  // Hyperplane, for enforcing that tracked points aren't inside obstacles
 using Points = Eigen::Matrix3Xf;
 using Normals = Eigen::Matrix3Xf;
 using Point = Eigen::Vector3f;
@@ -61,29 +67,29 @@ class Optimizer {
                                             const std::vector<FixedPoint> &fixed_points,
                                             ObstacleConstraints const &points_normals, double max_segment_length);
 
-  std::tuple<Points, Normals> test_box(const Eigen::Matrix3Xf &last_template, shape_msgs::SolidPrimitive const &box,
-                                       geometry_msgs::Pose const &pose);
+  std::tuple<Points, Normals> test_box(const Eigen::Matrix3Xf &last_template, shape_msgs::msg::SolidPrimitive const &box,
+                                       geometry_msgs::msg::Pose const &pose);
 
  private:
   [[nodiscard]] bool gripper_constraints_satisfiable(const std::vector<FixedPoint> &fixed_points) const;
 
   [[nodiscard]] std::tuple<Points, Normals> nearest_points_and_normal_box(const Eigen::Matrix3Xf &last_template,
-                                                                          shape_msgs::SolidPrimitive const &box,
-                                                                          geometry_msgs::Pose const &pose);
+                                                                          shape_msgs::msg::SolidPrimitive const &box,
+                                                                          geometry_msgs::msg::Pose const &pose);
 
   [[nodiscard]] std::tuple<Points, Normals> nearest_points_and_normal_sphere(const Eigen::Matrix3Xf &last_template,
-                                                                             shape_msgs::SolidPrimitive const &sphere,
-                                                                             geometry_msgs::Pose const &pose);
+                                                                             shape_msgs::msg::SolidPrimitive const &sphere,
+                                                                             geometry_msgs::msg::Pose const &pose);
 
   [[nodiscard]] std::tuple<Points, Normals> nearest_points_and_normal_plane(const Eigen::Matrix3Xf &last_template,
-                                                                            shape_msgs::Plane const &plane);
+                                                                            shape_msgs::msg::Plane const &plane);
 
   [[nodiscard]] std::tuple<Points, Normals> nearest_points_and_normal_cylinder(
-      const Eigen::Matrix3Xf &last_template, shape_msgs::SolidPrimitive const &cylinder,
-      geometry_msgs::Pose const &pose);
+      const Eigen::Matrix3Xf &last_template, shape_msgs::msg::SolidPrimitive const &cylinder,
+      geometry_msgs::msg::Pose const &pose);
 
   [[nodiscard]] std::tuple<Points, Normals> nearest_points_and_normal_mesh(const Eigen::Matrix3Xf &last_template,
-                                                                           shape_msgs::Mesh const &shapes_mesh);
+                                                                           shape_msgs::msg::Mesh const &shapes_mesh);
 
   [[nodiscard]] std::tuple<Points, Normals> nearest_points_and_normal(const Eigen::Matrix3Xf &last_template,
                                                                       Objects const &objects);
@@ -94,4 +100,3 @@ class Optimizer {
   float obstacle_cost_weight_;
 };
 
-#endif

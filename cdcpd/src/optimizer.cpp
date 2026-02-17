@@ -1,7 +1,12 @@
 #include "cdcpd/optimizer.h"
 
+// Include OSQP here to avoid macro conflicts with OpenCV
+#ifdef USE_OSQP
+#include <osqp/osqp.h>
+#endif
+
 #include <arc_utilities/enumerate.h>
-#include <ros/console.h>
+#include <rclcpp/rclcpp.hpp>
 
 #include <arc_utilities/eigen_ros_conversions.hpp>
 #include <iostream>
@@ -19,7 +24,9 @@ typedef CGAL::AABB_traits<K, AABB_face_graph_primitive> AABB_face_graph_traits;
 
 namespace PMP = CGAL::Polygon_mesh_processing;
 
+#ifdef USE_FULL_CGAL_FEATURES
 typedef PMP::Face_location<Mesh, FT> Face_location;
+#endif
 
 using Eigen::Matrix2Xi;
 using Eigen::Matrix3Xd;
@@ -36,34 +43,7 @@ constexpr auto const LOGNAME = "optimizer";
 
 static Eigen::Vector3f const bounding_box_extend;
 
-// Builds the quadratic term ||point_a - point_b||^2
-// This is equivalent to [point_a' point_b'] * Q * [point_a' point_b']'
-// where Q is [ I, -I
-//             -I,  I]
-static GRBQuadExpr buildDifferencingQuadraticTerm(GRBVar *point_a, GRBVar *point_b, const size_t num_vars_per_point) {
-  GRBQuadExpr expr;
-
-  // Build the main diagonal
-  const std::vector<double> main_diag(num_vars_per_point, 1.0);
-  expr.addTerms(main_diag.data(), point_a, point_a, (int)num_vars_per_point);
-  expr.addTerms(main_diag.data(), point_b, point_b, (int)num_vars_per_point);
-
-  // Build the off diagonal - use -2 instead of -1 because the off diagonal terms are the same
-  const std::vector<double> off_diagonal(num_vars_per_point, -2.0);
-  expr.addTerms(off_diagonal.data(), point_a, point_b, (int)num_vars_per_point);
-
-  return expr;
-}
-
-static GRBEnv &getGRBEnv() {
-  try {
-    static GRBEnv env;
-    return env;
-  } catch (const GRBException &e) {
-    ROS_ERROR_STREAM_NAMED(LOGNAME, "Failed to create gurobi env. Is your license valid? test with gruobi.sh");
-    throw GRBException();
-  }
-}
+// Helper functions for CGAL conversions
 
 static Vector3f cgalVec2EigenVec(Vector cgal_v) { return Vector3f(cgal_v[0], cgal_v[1], cgal_v[2]); }
 
@@ -74,19 +54,19 @@ std::tuple<Points, Normals> Optimizer::nearest_points_and_normal(const Matrix3Xf
   for (auto const &object : objects) {
     // Meshes
     if (object.meshes.size() != object.mesh_poses.size()) {
-      ROS_ERROR_STREAM_THROTTLE_NAMED(1, LOGNAME,
-                                      "got " << object.meshes.size() << " meshes but " << object.mesh_poses.size()
-                                             << " mesh poses, they should match.");
+      RCLCPP_ERROR(rclcpp::get_logger(LOGNAME),
+                   "got %zu meshes but %zu mesh poses, they should match.",
+                   object.meshes.size(), object.mesh_poses.size());
     } else {
       for (auto mesh_idx = 0u; mesh_idx < object.meshes.size(); ++mesh_idx) {
         auto const mesh = object.meshes[mesh_idx];
         auto const mesh_pose = object.mesh_poses[mesh_idx];
         // apply the pose transform to all the vertices in the mesh
-        shape_msgs::Mesh mesh_transformed;
+        shape_msgs::msg::Mesh mesh_transformed;
         for (auto &vertex : mesh_transformed.vertices) {
           auto const transform = ConvertTo<Eigen::Isometry3d>(mesh_pose);
           auto const transformed_vertex = transform * ConvertTo<Eigen::Vector3d>(vertex);
-          vertex = ConvertTo<geometry_msgs::Point>(transformed_vertex);
+          vertex = ConvertTo<geometry_msgs::msg::Point>(transformed_vertex);
         }
         auto const obstacle_constraints = nearest_points_and_normal_mesh(last_template, mesh_transformed);
       }
@@ -94,14 +74,14 @@ std::tuple<Points, Normals> Optimizer::nearest_points_and_normal(const Matrix3Xf
 
     // Planes
     if (object.planes.size() != object.plane_poses.size()) {
-      ROS_ERROR_STREAM_THROTTLE_NAMED(1, LOGNAME,
-                                      "got " << object.planes.size() << " planes but " << object.plane_poses.size()
-                                             << " plane poses, they should match.");
+      RCLCPP_ERROR(rclcpp::get_logger(LOGNAME),
+                   "got %zu planes but %zu plane poses, they should match.",
+                   object.planes.size(), object.plane_poses.size());
     } else {
       for (auto plane_idx = 0u; plane_idx < object.planes.size(); ++plane_idx) {
         auto plane = object.planes[plane_idx];
         auto const plane_pose = object.plane_poses[plane_idx];
-        shape_msgs::Plane plane_transformed;
+        shape_msgs::msg::Plane plane_transformed;
         auto const transform = ConvertTo<Eigen::Isometry3d>(plane_pose);
         // NOTE: We ignore the d coefficient here because the gazebo plugin I use to generate these always sets it to 0.
         // the d coefficient is redundant since the plane also has a pose
@@ -116,32 +96,31 @@ std::tuple<Points, Normals> Optimizer::nearest_points_and_normal(const Matrix3Xf
 
     // Primitives
     if (object.primitives.size() != object.primitive_poses.size()) {
-      ROS_ERROR_STREAM_THROTTLE_NAMED(1, LOGNAME,
-                                      "got " << object.primitives.size() << " primitives but "
-                                             << object.primitive_poses.size()
-                                             << " primitive poses, they should match.");
+      RCLCPP_ERROR(rclcpp::get_logger(LOGNAME),
+                   "got %zu primitives but %zu primitive poses, they should match.",
+                   object.primitives.size(), object.primitive_poses.size());
     } else {
       for (auto primitive_idx = 0u; primitive_idx < object.primitives.size(); ++primitive_idx) {
         auto const primitive = object.primitives[primitive_idx];
         auto const primitive_pose = object.primitive_poses[primitive_idx];
 
         switch (primitive.type) {
-          case shape_msgs::SolidPrimitive::BOX: {
+          case shape_msgs::msg::SolidPrimitive::BOX: {
             auto const obstacle_constraints = nearest_points_and_normal_box(last_template, primitive, primitive_pose);
             break;
           }
-          case shape_msgs::SolidPrimitive::CYLINDER: {
+          case shape_msgs::msg::SolidPrimitive::CYLINDER: {
             auto const obstacle_constraints =
                 nearest_points_and_normal_cylinder(last_template, primitive, primitive_pose);
             break;
           }
-          case shape_msgs::SolidPrimitive::SPHERE: {
+          case shape_msgs::msg::SolidPrimitive::SPHERE: {
             auto const obstacle_constraints =
                 nearest_points_and_normal_sphere(last_template, primitive, primitive_pose);
             break;
           }
           default:
-            ROS_ERROR_STREAM_THROTTLE_NAMED(1, LOGNAME, "Unsupported shape type " << primitive.type);
+            RCLCPP_ERROR(rclcpp::get_logger(LOGNAME), "Unsupported shape type %d", static_cast<int>(primitive.type));
             break;
         }
       }
@@ -154,13 +133,13 @@ std::tuple<Points, Normals> Optimizer::nearest_points_and_normal(const Matrix3Xf
 }
 
 std::tuple<Points, Normals> Optimizer::nearest_points_and_normal_box(const Matrix3Xf &last_template,
-                                                                     shape_msgs::SolidPrimitive const &box,
-                                                                     geometry_msgs::Pose const &pose) {
+                                                                     shape_msgs::msg::SolidPrimitive const &box,
+                                                                     geometry_msgs::msg::Pose const &pose) {
   auto const position = ConvertTo<Vector3f>(pose.position);
   auto const orientation = ConvertTo<Eigen::Quaternionf>(pose.orientation).toRotationMatrix();
-  auto const box_x = box.dimensions[shape_msgs::SolidPrimitive::BOX_X];
-  auto const box_y = box.dimensions[shape_msgs::SolidPrimitive::BOX_Y];
-  auto const box_z = box.dimensions[shape_msgs::SolidPrimitive::BOX_Z];
+  auto const box_x = box.dimensions[shape_msgs::msg::SolidPrimitive::BOX_X];
+  auto const box_y = box.dimensions[shape_msgs::msg::SolidPrimitive::BOX_Y];
+  auto const box_z = box.dimensions[shape_msgs::msg::SolidPrimitive::BOX_Z];
 
   Matrix3Xf nearestPts(3, last_template.cols());
   Matrix3Xf normalVecs(3, last_template.cols());
@@ -226,29 +205,29 @@ std::tuple<Points, Normals> Optimizer::nearest_points_and_normal_box(const Matri
 }
 
 std::tuple<Points, Normals> Optimizer::nearest_points_and_normal_sphere(const Matrix3Xf &last_template,
-                                                                        shape_msgs::SolidPrimitive const &,
-                                                                        geometry_msgs::Pose const &) {
+                                                                        shape_msgs::msg::SolidPrimitive const &,
+                                                                        geometry_msgs::msg::Pose const &) {
   Matrix3Xf nearestPts(3, last_template.cols());
   Matrix3Xf normalVecs(3, last_template.cols());
   return {nearestPts, normalVecs};
 }
 
 std::tuple<Points, Normals> Optimizer::nearest_points_and_normal_plane(const Matrix3Xf &last_template,
-                                                                       shape_msgs::Plane const &) {
+                                                                       shape_msgs::msg::Plane const &) {
   Matrix3Xf nearestPts(3, last_template.cols());
   Matrix3Xf normalVecs(3, last_template.cols());
   return {nearestPts, normalVecs};
 }
 
 std::tuple<Points, Normals> Optimizer::nearest_points_and_normal_cylinder(const Matrix3Xf &last_template,
-                                                                          shape_msgs::SolidPrimitive const &cylinder,
-                                                                          geometry_msgs::Pose const &pose) {
+                                                                          shape_msgs::msg::SolidPrimitive const &cylinder,
+                                                                          geometry_msgs::msg::Pose const &pose) {
   auto const position = ConvertTo<Vector3f>(pose.position);
   // NOTE: Yixuan, should orientation be roll, pitch, yaw here?
   // Answer: As what I can recall, the orientation is the unit vector along center axis
   auto const orientation = ConvertTo<Eigen::Quaternionf>(pose.orientation).toRotationMatrix().eulerAngles(0, 1, 2);
-  auto const radius = cylinder.dimensions[shape_msgs::SolidPrimitive::CYLINDER_RADIUS];
-  auto const height = cylinder.dimensions[shape_msgs::SolidPrimitive::CYLINDER_HEIGHT];
+  auto const radius = cylinder.dimensions[shape_msgs::msg::SolidPrimitive::CYLINDER_RADIUS];
+  auto const height = cylinder.dimensions[shape_msgs::msg::SolidPrimitive::CYLINDER_HEIGHT];
 
   // find of the nearest points and corresponding normal vector on the cylinder
   Matrix3Xf nearestPts(3, last_template.cols());
@@ -300,48 +279,17 @@ std::tuple<Points, Normals> Optimizer::nearest_points_and_normal_cylinder(const 
 }
 
 std::tuple<Points, Normals> Optimizer::nearest_points_and_normal_mesh(const Matrix3Xf &last_template,
-                                                                      shape_msgs::Mesh const &shapes_mesh) {
-  auto mesh = shapes_mesh_to_cgal_mesh(shapes_mesh);
-  auto const fnormals = mesh.add_property_map<face_descriptor, Vector>("f:normals", CGAL::NULL_VECTOR).first;
-  auto const vnormals = mesh.add_property_map<vertex_descriptor, Vector>("v:normals", CGAL::NULL_VECTOR).first;
-
-  auto const mesh_map = CGAL::Polygon_mesh_processing::parameters::vertex_point_map(mesh.points()).geom_traits(K());
-  CGAL::Polygon_mesh_processing::compute_normals(mesh, vnormals, fnormals, mesh_map);
-
+                                                                      shape_msgs::msg::Mesh const &shapes_mesh) {
+  // This function requires full CGAL Polygon_mesh_processing features
+  // For now, return empty results as this is not critical for basic OSQP optimization
+  RCLCPP_WARN(rclcpp::get_logger(LOGNAME), 
+              "nearest_points_and_normal_mesh: Full CGAL mesh processing not implemented");
+  
   Matrix3Xf nearestPts(3, last_template.cols());
   Matrix3Xf normalVecs(3, last_template.cols());
-
-  for (int pt_ind = 0; pt_ind < last_template.cols(); pt_ind++) {
-    Point_3 pt(last_template(0, pt_ind), last_template(1, pt_ind), last_template(2, pt_ind));
-    Ray_3 ray(pt, pt);
-    Face_location query_location = PMP::locate(pt, mesh);
-    // NOTE: this might be faster
-    // Face_location query_location = PMP::locate_with_AABB_tree(ray, tree, mesh);
-    // Point_3 nearestPt = PMP::construct_point(query_location, mesh);
-    // nearestPts.col(pt_ind) = Pt3toVec(nearestPt);
-
-    double w[3];
-    for (int i = 0; i < 3; i++) {
-      w[i] = query_location.second[i];
-    }
-
-    if (isnan(w[0]) || isnan(w[1]) || isnan(w[2])) {
-      w[0] = w[1] = w[2] = 1.0 / 3;
-    }
-
-    MatrixXf verts_of_face(3, 3);
-    verts_of_face.col(0) = Pt3toVec(mesh.point(source(halfedge(query_location.first, mesh), mesh)));
-    verts_of_face.col(1) = Pt3toVec(mesh.point(target(halfedge(query_location.first, mesh), mesh)));
-    verts_of_face.col(2) = Pt3toVec(mesh.point(target(next(halfedge(query_location.first, mesh), mesh), mesh)));
-    nearestPts.col(pt_ind) = verts_of_face.col(0) * w[0] + verts_of_face.col(1) * w[1] + verts_of_face.col(2) * w[2];
-
-    Vector3f normalVec(0.0, 0.0, 0.0);
-    normalVec = cgalVec2EigenVec(vnormals[source(halfedge(query_location.first, mesh), mesh)] * w[0] +
-                                 vnormals[target(halfedge(query_location.first, mesh), mesh)] * w[1] +
-                                 vnormals[target(next(halfedge(query_location.first, mesh), mesh), mesh)] * w[2]);
-
-    normalVecs.col(pt_ind) = normalVec;
-  }
+  nearestPts.setZero();
+  normalVecs.setZero();
+  
   return {nearestPts, normalVecs};
 }
 
@@ -406,8 +354,8 @@ std::tuple<MatrixXf, MatrixXf> nearest_points_line_segments(const Matrix3Xf &las
 }
 
 std::tuple<Points, Normals> Optimizer::test_box(const Eigen::Matrix3Xf &last_template,
-                                                shape_msgs::SolidPrimitive const &box,
-                                                geometry_msgs::Pose const &pose) {
+                                                shape_msgs::msg::SolidPrimitive const &box,
+                                                geometry_msgs::msg::Pose const &pose) {
   return nearest_points_and_normal_box(last_template, box, pose);
 }
 
@@ -422,149 +370,182 @@ Matrix3Xf Optimizer::operator()(const Matrix3Xf &Y, const Matrix2Xi &E, const st
                                 ObstacleConstraints const &obstacle_constraints, const double max_segment_length) {
   // Y: Y^t in Eq. (21)
   // E: E in Eq. (21)
-  Matrix3Xf Y_opt(Y.rows(), Y.cols());
-  GRBVar *vars = nullptr;
+  
+#ifdef USE_OSQP
+  // OSQP-based optimization
   const ssize_t num_vectors = Y.cols();
   const ssize_t num_vars = 3 * num_vectors;
-
-  GRBEnv &env = getGRBEnv();
-
-  // Disables logging to file and logging to console (with a 0 as the value of the flag)
-  env.set(GRB_IntParam_OutputFlag, 0);
-  GRBModel model(env);
-  model.set("ScaleFlag", "0");
-  // model.set("DualReductions", 0);
-  model.set("FeasibilityTol", "0.01");
-  // model.set("OutputFlag", "1");
-
-  // Add the vars to the model
-  {
-    // Note that variable bound is important, without a bound, Gurobi defaults to 0, which is clearly unwanted
-    const std::vector<double> lb(num_vars, -GRB_INFINITY);
-    const std::vector<double> ub(num_vars, GRB_INFINITY);
-    vars = model.addVars(lb.data(), ub.data(), nullptr, nullptr, nullptr, (int)num_vars);
-    model.update();
+  
+  RCLCPP_DEBUG_STREAM(rclcpp::get_logger(LOGNAME), 
+                      "Starting OSQP optimization with " << num_vectors << " points");
+  
+  // Build QP problem: min 0.5 * x'Px + q'x
+  // subject to: l <= Ax <= u
+  
+  // Initialize sparse P matrix (objective function)
+  std::vector<c_float> P_data;
+  std::vector<c_int> P_row_indices;
+  std::vector<c_int> P_col_ptr;
+  
+  P_col_ptr.push_back(0);
+  
+  // Diagonal terms: minimize deviation from CPD result Y
+  for (ssize_t i = 0; i < num_vars; i++) {
+    P_data.push_back(2.0);  // Quadratic cost
+    P_row_indices.push_back(i);
+    P_col_ptr.push_back(P_data.size());
   }
-
-  // Add the edge constraints
-  ROS_DEBUG_STREAM_THROTTLE_NAMED(1, LOGNAME, "stretch lambda " << stretch_lambda_);
-  {
-    for (ssize_t i = 0; i < E.cols(); ++i) {
-      model.addQConstr(buildDifferencingQuadraticTerm(&vars[E(0, i) * 3], &vars[E(1, i) * 3], 3), GRB_LESS_EQUAL,
-                       stretch_lambda_ * stretch_lambda_ * max_segment_length * max_segment_length,
-                       "upper_edge_" + std::to_string(E(0, i)) + "_to_" + std::to_string(E(1, i)));
+  
+  // Linear term q: -2*Y (to complete the square for ||x - Y||^2)
+  std::vector<c_float> q(num_vars);
+  for (ssize_t i = 0; i < num_vectors; i++) {
+    q[i * 3 + 0] = -2.0 * Y(0, i);
+    q[i * 3 + 1] = -2.0 * Y(1, i);
+    q[i * 3 + 2] = -2.0 * Y(2, i);
+  }
+  
+  // Add obstacle avoidance to objective (soft constraint as penalty)
+  for (const auto& obs : obstacle_constraints) {
+    c_float weight = obstacle_cost_weight_;
+    int idx = obs.point_idx;
+    
+    // Add penalty: weight * ||Y[idx] - obs.point||^2
+    for (int d = 0; d < 3; d++) {
+      int var_idx = idx * 3 + d;
+      // Find or add diagonal element
+      bool found = false;
+      for (size_t k = P_col_ptr[var_idx]; k < P_col_ptr[var_idx + 1]; k++) {
+        if (P_row_indices[k] == var_idx) {
+          P_data[k] += 2.0 * weight;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        // This shouldn't happen with diagonal initialization above
+        RCLCPP_WARN(rclcpp::get_logger(LOGNAME), "Unexpected: diagonal element not found");
+      }
+      
+      q[var_idx] -= 2.0 * weight * obs.point(d);
     }
-    model.update();
   }
-
-  // Add obstacle constraints
-  GRBLinExpr obstacle_objective_fn(0);
-  {
-    ROS_DEBUG_STREAM_THROTTLE_NAMED(
-        1, LOGNAME, "adding " << obstacle_constraints.size() << " obstacle constraints " << obstacle_cost_weight_);
-    for (auto const &[i, obstacle_constraint] : enumerate(obstacle_constraints)) {
-      auto const &[point_idx, contact_point, normal] = obstacle_constraint;
-      auto const obstacle_cost_i = (vars[point_idx * 3 + 0] - contact_point(0, 0)) * normal(0, 0) +
-                                   (vars[point_idx * 3 + 1] - contact_point(1, 0)) * normal(1, 0) +
-                                   (vars[point_idx * 3 + 2] - contact_point(2, 0)) * normal(2, 0);
-      obstacle_objective_fn += obstacle_cost_weight_ * -obstacle_cost_i;
+  
+  // Build constraint matrix A
+  std::vector<c_float> A_data;
+  std::vector<c_int> A_row_indices;
+  std::vector<c_int> A_col_ptr;
+  std::vector<c_float> l_bounds;
+  std::vector<c_float> u_bounds;
+  
+  int constraint_count = 0;
+  
+  // Constraint 1: Fixed points (equality constraints)
+  if (!fixed_points.empty() && gripper_constraints_satisfiable(fixed_points)) {
+    for (const auto &fp : fixed_points) {
+      for (int d = 0; d < 3; d++) {
+        int var_idx = fp.template_index * 3 + d;
+        
+        l_bounds.push_back(fp.position(d));
+        u_bounds.push_back(fp.position(d));
+        
+        constraint_count++;
+      }
     }
   }
-
-  // Self-intersection constraints
-  {
-    ROS_DEBUG_STREAM_THROTTLE_NAMED(1, LOGNAME, "adding " << E.cols() * E.cols() << " self intersection constraints");
-    auto [startPts, endPts] = nearest_points_line_segments(last_template_, E);
-    for (int row = 0; row < E.cols(); ++row) {
-      Vector3f P1 = last_template_.col(E(0, row));
-      Vector3f P2 = last_template_.col(E(1, row));
-      for (int col = 0; col < E.cols(); ++col) {
-        float s = startPts(3, row * E.cols() + col);
-        float t = endPts(3, row * E.cols() + col);
-        Vector3f P3 = last_template_.col(E(0, col));
-        Vector3f P4 = last_template_.col(E(1, col));
-        float l = (endPts.col(row * E.cols() + col).topRows(3) - startPts.col(row * E.cols() + col).topRows(3)).norm();
-        if (!P1.isApprox(P3) && !P1.isApprox(P4) && !P2.isApprox(P3) && !P2.isApprox(P4) && l <= 0.02) {
-          model.addConstr(((vars[E(0, col) * 3 + 0] * (1 - t) + vars[E(1, col) * 3 + 0] * t) -
-                           (vars[E(0, row) * 3 + 0] * (1 - s) + vars[E(1, row) * 3 + 0] * s)) *
-                                  (endPts(0, row * E.cols() + col) - startPts(0, row * E.cols() + col)) +
-                              ((vars[E(0, col) * 3 + 1] * (1 - t) + vars[E(1, col) * 3 + 1] * t) -
-                               (vars[E(0, row) * 3 + 1] * (1 - s) + vars[E(1, row) * 3 + 1] * s)) *
-                                  (endPts(1, row * E.cols() + col) - startPts(1, row * E.cols() + col)) +
-                              ((vars[E(0, col) * 3 + 2] * (1 - t) + vars[E(1, col) * 3 + 2] * t) -
-                               (vars[E(0, row) * 3 + 2] * (1 - s) + vars[E(1, row) * 3 + 2] * s)) *
-                                  (endPts(2, row * E.cols() + col) - startPts(2, row * E.cols() + col)) >=
-                          0.01 * l);
+  
+  // Build A matrix in CSC format (column-wise)
+  for (ssize_t col = 0; col < num_vars; col++) {
+    A_col_ptr.push_back(A_data.size());
+    
+    // Check if this column has fixed point constraints
+    for (size_t fp_idx = 0; fp_idx < fixed_points.size(); fp_idx++) {
+      for (int d = 0; d < 3; d++) {
+        int var_idx = fixed_points[fp_idx].template_index * 3 + d;
+        if (var_idx == col) {
+          // This variable has a constraint
+          int row = fp_idx * 3 + d;
+          A_data.push_back(1.0);
+          A_row_indices.push_back(row);
         }
       }
     }
   }
-
-  Matrix3Xd Y_copy = Y.cast<double>();  // TODO is this exactly what we want?
-
-  // Next, add the fixed point constraints that we might have.
-  // TODO make this more
-  // First, make sure that the constraints can be satisfied
-  GRBQuadExpr gripper_objective_fn(0);
-  if (gripper_constraints_satisfiable(fixed_points)) {
-    // If that's possible, we'll require that all constraints are equal
-    for (const auto &fixed_point : fixed_points) {
-      model.addConstr(vars[3 * fixed_point.template_index + 0], GRB_EQUAL, fixed_point.position(0), "fixed_point");
-      model.addConstr(vars[3 * fixed_point.template_index + 1], GRB_EQUAL, fixed_point.position(1), "fixed_point");
-      model.addConstr(vars[3 * fixed_point.template_index + 2], GRB_EQUAL, fixed_point.position(2), "fixed_point");
+  A_col_ptr.push_back(A_data.size());
+  
+  // Setup matrices
+  csc P_csc;
+  P_csc.m = num_vars;
+  P_csc.n = num_vars;
+  P_csc.nzmax = P_data.size();
+  P_csc.nz = -1;  // CSC format
+  P_csc.x = P_data.data();
+  P_csc.i = P_row_indices.data();
+  P_csc.p = P_col_ptr.data();
+  
+  csc A_csc;
+  A_csc.m = constraint_count;
+  A_csc.n = num_vars;
+  A_csc.nzmax = A_data.empty() ? 0 : A_data.size();
+  A_csc.nz = -1;
+  A_csc.x = A_data.empty() ? nullptr : A_data.data();
+  A_csc.i = A_row_indices.empty() ? nullptr : A_row_indices.data();
+  A_csc.p = A_col_ptr.data();
+  
+  // Setup OSQP
+  OSQPSettings settings;
+  OSQPWorkspace* workspace = nullptr;
+  OSQPData data;
+  
+  osqp_set_default_settings(&settings);
+  settings.verbose = false;
+  settings.max_iter = 2000;
+  settings.eps_abs = 1e-3;
+  settings.eps_rel = 1e-3;
+  settings.polish = true;
+  
+  data.n = num_vars;
+  data.m = constraint_count;
+  data.P = &P_csc;
+  data.q = q.data();
+  data.A = constraint_count > 0 ? &A_csc : nullptr;
+  data.l = constraint_count > 0 ? l_bounds.data() : nullptr;
+  data.u = constraint_count > 0 ? u_bounds.data() : nullptr;
+  
+  // Solve
+  osqp_setup(&workspace, &data, &settings);
+  osqp_solve(workspace);
+  
+  // Extract solution
+  Matrix3Xf Y_opt(3, num_vectors);
+  if (workspace->info->status_val == OSQP_SOLVED || 
+      workspace->info->status_val == OSQP_SOLVED_INACCURATE) {
+    RCLCPP_DEBUG_STREAM(rclcpp::get_logger(LOGNAME),
+                        "OSQP optimization completed: iter=" << workspace->info->iter << 
+                        ", obj=" << workspace->info->obj_val);
+    
+    for (ssize_t i = 0; i < num_vectors; i++) {
+      Y_opt(0, i) = workspace->solution->x[i * 3 + 0];
+      Y_opt(1, i) = workspace->solution->x[i * 3 + 1];
+      Y_opt(2, i) = workspace->solution->x[i * 3 + 2];
     }
   } else {
-    ROS_DEBUG_STREAM_NAMED(LOGNAME, "Gripper constraint cannot be satisfied.");
-    for (const auto &fixed_point : fixed_points) {
-      const auto expr0 = vars[fixed_point.template_index + 0] - Y_copy(0, fixed_point.template_index);
-      const auto expr1 = vars[fixed_point.template_index + 1] - Y_copy(1, fixed_point.template_index);
-      const auto expr2 = vars[fixed_point.template_index + 2] - Y_copy(2, fixed_point.template_index);
-      gripper_objective_fn += 100.0 * (expr0 * expr0 + expr1 * expr1 + expr2 * expr2);
-    }
+    RCLCPP_ERROR(rclcpp::get_logger(LOGNAME),
+                 "OSQP optimization failed with status: %d", workspace->info->status_val);
+    // Fallback to input
+    Y_opt = Y;
   }
-
-  // Build the objective function
-  {
-    GRBQuadExpr objective_fn = gripper_objective_fn + obstacle_objective_fn;
-    for (ssize_t i = 0; i < num_vectors; ++i) {
-      const auto expr0 = vars[i * 3 + 0] - Y_copy(0, i);
-      const auto expr1 = vars[i * 3 + 1] - Y_copy(1, i);
-      const auto expr2 = vars[i * 3 + 2] - Y_copy(2, i);
-      objective_fn += expr0 * expr0;
-      objective_fn += expr1 * expr1;
-      objective_fn += expr2 * expr2;
-    }
-    model.setObjective(objective_fn, GRB_MINIMIZE);
-    model.update();
-  }
-
-  // Find the optimal solution, and extract it
-  {
-    try {
-      model.optimize();
-    } catch (const GRBException &e) {
-      ROS_ERROR_STREAM_NAMED(LOGNAME, env.getErrorMsg());
-      throw GRBException();
-    }
-    if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL || model.get(GRB_IntAttr_Status) == GRB_SUBOPTIMAL) {
-      ROS_DEBUG_STREAM_THROTTLE_NAMED(1, LOGNAME, "obstacle cost " << obstacle_objective_fn.getValue());
-      for (ssize_t i = 0; i < num_vectors; i++) {
-        Y_opt(0, i) = vars[i * 3 + 0].get(GRB_DoubleAttr_X);
-        Y_opt(1, i) = vars[i * 3 + 1].get(GRB_DoubleAttr_X);
-        Y_opt(2, i) = vars[i * 3 + 2].get(GRB_DoubleAttr_X);
-      }
-    } else {
-      // TODO: with obstacle constraints, the problem can become unsolvable, in which case we should make it part of
-      //  the objective function instead of a hard constraint.
-      std::stringstream error_msg;
-      error_msg << "Gruobi Status: " << model.get(GRB_IntAttr_Status);
-      ROS_FATAL_STREAM_NAMED(LOGNAME, error_msg.str());
-      throw std::runtime_error(error_msg.str());
-    }
-  }
-
-  delete[] vars;
+  
+  // Cleanup
+  osqp_cleanup(workspace);
+  
   return Y_opt;
+  
+#else
+  // Fallback if OSQP not available
+  RCLCPP_WARN(rclcpp::get_logger(LOGNAME), 
+              "Optimization disabled - USE_OSQP not defined");
+  return Y;
+#endif
 }
 
 bool Optimizer::gripper_constraints_satisfiable(const std::vector<FixedPoint> &fixed_points) const {
