@@ -52,7 +52,7 @@ find_package(visualization_msgs REQUIRED)
 
 find_package(OpenCV REQUIRED)
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
-# find_package(GUROBI QUIET)  # Disabled - using alternative optimization library
+find_package(osqp REQUIRED)  # Using OSQP for optimization
 find_package(FAISS QUIET)  # Will use local build if not found in system
 # Manually set FAISS paths if not found by find_package
 if(NOT FAISS_FOUND)
@@ -79,7 +79,7 @@ endif()
 ### The library itself
 add_library(cdcpd SHARED
         src/cdcpd.cpp
-        # src/optimizer.cpp  # Disabled - requires GUROBI, will implement alternative
+        src/optimizer.cpp  # Re-enabled with OSQP
         src/obs_util.cpp
         src/past_template_matcher.cpp  # Re-enabled with FAISS
         )
@@ -127,6 +127,7 @@ target_link_libraries(cdcpd
         Eigen3::Eigen
         ${OpenCV_LIBS}
         CGAL::CGAL
+        osqp::osqp
         )
 
 if(FAISS_FOUND)
@@ -134,14 +135,9 @@ if(FAISS_FOUND)
   message(STATUS "Linking FAISS library: ${FAISS_LIBRARY}")
 endif()
 
-# Gurobi disabled - will implement alternative optimization
-# if(GUROBI_FOUND)
-#   target_link_libraries(cdcpd PUBLIC ${GUROBI_LIBRARIES})
-#   target_include_directories(cdcpd SYSTEM PUBLIC ${GUROBI_INCLUDE_DIRS})
-#   target_compile_definitions(cdcpd PUBLIC USE_GUROBI)
-# endif()
-message(STATUS "GUROBI LIB ${GUROBI_LIBRARIES}")
-message(STATUS "GUROBI INCLUDE ${GUROBI_INCLUDE_DIRS}")
+# OSQP enabled for optimization
+target_compile_definitions(cdcpd PUBLIC USE_OSQP)
+message(STATUS "OSQP enabled for constraint-based optimization")
 
 target_compile_definitions(cdcpd PUBLIC ${PCL_DEFINITIONS})
 
@@ -223,6 +219,11 @@ install(TARGETS
         cdcpd_offline
         DESTINATION lib/${PROJECT_NAME})
 
+# Install launch files
+install(DIRECTORY launch/
+        DESTINATION share/${PROJECT_NAME}/launch
+        FILES_MATCHING PATTERN "*.launch.py")
+
 # Export dependencies
 ament_export_targets(cdcpd-targets HAS_LIBRARY_TARGET)
 ament_export_dependencies(
@@ -249,7 +250,7 @@ ament_export_dependencies(
         visualization_msgs
         OpenCV
         Eigen3
-        GUROBI
+        # GUROBI (removed)
         FAISS
         Qt5
         PCL
