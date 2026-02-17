@@ -81,9 +81,9 @@ ssize_t XYZGrid::worldPosToGridIndexClamped(const Eigen::Vector3d& pos) const
     const ssize_t z_ind = std::lround(grid_aligned_pos.z() * inv_world_z_step_);
 
     return xyzIndexToGridIndex(
-                arc_helpers::ClampValue(x_ind, 0L, world_x_num_steps_ - 1),
-                arc_helpers::ClampValue(y_ind, 0L, world_y_num_steps_ - 1),
-                arc_helpers::ClampValue(z_ind, 0L, world_z_num_steps_ - 1));
+                arm_helpers::ClampValue(x_ind, 0L, world_x_num_steps_ - 1),
+                arm_helpers::ClampValue(y_ind, 0L, world_y_num_steps_ - 1),
+                arm_helpers::ClampValue(z_ind, 0L, world_z_num_steps_ - 1));
 }
 
 Eigen::Vector3d XYZGrid::roundToGrid(const Eigen::Vector3d& pos) const

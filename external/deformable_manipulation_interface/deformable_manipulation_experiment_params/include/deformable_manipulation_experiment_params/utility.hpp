@@ -4,7 +4,7 @@
 #include <type_traits>
 #include <cstdint>
 #include <Eigen/Dense>
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 #include <std_msgs/ColorRGBA.h>
 #include <arc_utilities/arc_helpers.hpp>
 #include <arc_utilities/ros_helpers.hpp>
@@ -34,10 +34,10 @@ namespace smmap
 
     inline int PressAnyKeyToContinue(const std::string& message = "Press any key to continue ")
     {
-        if (!arc_helpers::IsDebuggerPresent())
+        if (!arm_helpers::IsDebuggerPresent())
         {
             std::cout << message << std::flush;
-            auto key = arc_helpers::GetChar();
+            auto key = arm_helpers::GetChar();
             if (key != '\n')
             {
                 std::cout << std::endl;

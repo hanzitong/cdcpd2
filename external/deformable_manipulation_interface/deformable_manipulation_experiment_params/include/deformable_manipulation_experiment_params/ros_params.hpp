@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include <Eigen/Core>
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 
 #include "deformable_manipulation_experiment_params/task_enums.h"
 
@@ -14,311 +14,311 @@ namespace smmap
     // Visualization Settings
     ////////////////////////////////////////////////////////////////////////////
 
-    bool GetDisableSmmapVisualizations(ros::NodeHandle& nh);
-    bool GetVisualizeObjectDesiredMotion(ros::NodeHandle& nh);
-    bool GetVisualizeGripperMotion(ros::NodeHandle& nh);
-    bool GetVisualizeObjectPredictedMotion(ros::NodeHandle& nh);
-    bool GetVisualizeRRT(ros::NodeHandle& nh, const bool default_vis = true);
-    bool GetVisualizeFreeSpaceGraph(ros::NodeHandle& nh);
-    bool GetVisualizeCorrespondences(ros::NodeHandle& nh);
-    bool VisualizeStrainLines(ros::NodeHandle& nh);
+    bool GetDisableSmmapVisualizations(const std::shared_ptr<rclcpp::Node>& nh);
+    bool GetVisualizeObjectDesiredMotion(const std::shared_ptr<rclcpp::Node>& nh);
+    bool GetVisualizeGripperMotion(const std::shared_ptr<rclcpp::Node>& nh);
+    bool GetVisualizeObjectPredictedMotion(const std::shared_ptr<rclcpp::Node>& nh);
+    bool GetVisualizeRRT(const std::shared_ptr<rclcpp::Node>& nh, const bool default_vis = true);
+    bool GetVisualizeFreeSpaceGraph(const std::shared_ptr<rclcpp::Node>& nh);
+    bool GetVisualizeCorrespondences(const std::shared_ptr<rclcpp::Node>& nh);
+    bool VisualizeStrainLines(const std::shared_ptr<rclcpp::Node>& nh);
 
-    int GetViewerWidth(ros::NodeHandle& nh);     // Pixels
-    int GetViewerHeight(ros::NodeHandle& nh);    // Pixels
+    int GetViewerWidth(const std::shared_ptr<rclcpp::Node>& nh);     // Pixels
+    int GetViewerHeight(const std::shared_ptr<rclcpp::Node>& nh);    // Pixels
 
     ////////////////////////////////////////////////////////////////////////////
     // Task and Deformable Type parameters
     ////////////////////////////////////////////////////////////////////////////
 
-    std::string GetTestId(ros::NodeHandle& nh);
-    DeformableType GetDeformableType(ros::NodeHandle& nh);
-    std::string GetTaskTypeString(ros::NodeHandle& nh);
-    TaskType GetTaskType(ros::NodeHandle& nh);
-    double GetMaxTime(ros::NodeHandle& nh);
-    double GetMaxStretchFactor(ros::NodeHandle& nh);
-    double GetMaxBandLength(ros::NodeHandle& nh);
-    float GetMaxStrain(ros::NodeHandle& nh);
+    std::string GetTestId(const std::shared_ptr<rclcpp::Node>& nh);
+    DeformableType GetDeformableType(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetTaskTypeString(const std::shared_ptr<rclcpp::Node>& nh);
+    TaskType GetTaskType(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetMaxTime(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetMaxStretchFactor(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetMaxBandLength(const std::shared_ptr<rclcpp::Node>& nh);
+    float GetMaxStrain(const std::shared_ptr<rclcpp::Node>& nh);
 
     ////////////////////////////////////////////////////////////////////////////
     // Error calculation settings
     ////////////////////////////////////////////////////////////////////////////
 
-    double GetErrorThresholdAlongNormal(ros::NodeHandle& nh);
-    double GetErrorThresholdDistanceToNormal(ros::NodeHandle& nh);
-    double GetErrorThresholdTaskDone(ros::NodeHandle& nh);
-    double GetDesiredMotionScalingFactor(ros::NodeHandle& nh);
+    double GetErrorThresholdAlongNormal(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetErrorThresholdDistanceToNormal(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetErrorThresholdTaskDone(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetDesiredMotionScalingFactor(const std::shared_ptr<rclcpp::Node>& nh);
 
     ////////////////////////////////////////////////////////////////////////////
     // Gripper Size Settings
     ////////////////////////////////////////////////////////////////////////////
 
-    float GetGripperApperture(ros::NodeHandle& nh);                     // METERS
+    float GetGripperApperture(const std::shared_ptr<rclcpp::Node>& nh);                     // METERS
     // TODO: where is this still used? Is it being used correctly vs ControllerMinDistToObstacles?
     double GetRobotGripperRadius();                                     // METERS
     // Used by the "older" avoidance code, I.e. LeastSquaresControllerWithObjectAvoidance
     double GetRobotMinGripperDistanceToObstacles();                     // METERS
-    double GetControllerMinDistanceToObstacles(ros::NodeHandle& nh);    // METERS
-    double GetRRTMinGripperDistanceToObstacles(ros::NodeHandle& nh);    // METERS
-    double GetRRTTargetMinDistanceScaleFactor(ros::NodeHandle& nh);
+    double GetControllerMinDistanceToObstacles(const std::shared_ptr<rclcpp::Node>& nh);    // METERS
+    double GetRRTMinGripperDistanceToObstacles(const std::shared_ptr<rclcpp::Node>& nh);    // METERS
+    double GetRRTTargetMinDistanceScaleFactor(const std::shared_ptr<rclcpp::Node>& nh);
 
     ////////////////////////////////////////////////////////////////////////////
     // Table Size Settings
     ////////////////////////////////////////////////////////////////////////////
 
-    float GetTableSurfaceX(ros::NodeHandle& nh);        // METERS
-    float GetTableSurfaceY(ros::NodeHandle& nh);        // METERS
-    float GetTableSurfaceZ(ros::NodeHandle& nh);        // METERS
-    float GetTableHalfExtentsX(ros::NodeHandle& nh);    // METERS
-    float GetTableHalfExtentsY(ros::NodeHandle& nh);    // METERS
-    float GetTableHeight(ros::NodeHandle& nh);          // METERS
-    float GetTableLegWidth(ros::NodeHandle& nh);        // METERS
-    float GetTableThickness(ros::NodeHandle& nh);       // METERS
+    float GetTableSurfaceX(const std::shared_ptr<rclcpp::Node>& nh);        // METERS
+    float GetTableSurfaceY(const std::shared_ptr<rclcpp::Node>& nh);        // METERS
+    float GetTableSurfaceZ(const std::shared_ptr<rclcpp::Node>& nh);        // METERS
+    float GetTableHalfExtentsX(const std::shared_ptr<rclcpp::Node>& nh);    // METERS
+    float GetTableHalfExtentsY(const std::shared_ptr<rclcpp::Node>& nh);    // METERS
+    float GetTableHeight(const std::shared_ptr<rclcpp::Node>& nh);          // METERS
+    float GetTableLegWidth(const std::shared_ptr<rclcpp::Node>& nh);        // METERS
+    float GetTableThickness(const std::shared_ptr<rclcpp::Node>& nh);       // METERS
 
     ////////////////////////////////////////////////////////////////////////////
     // Cylinder Size Settings
     // TODO: Update launch files to contain these defaults
     ////////////////////////////////////////////////////////////////////////////
 
-    float GetCylinderRadius(ros::NodeHandle& nh);           // METERS
-    float GetCylinderHeight(ros::NodeHandle& nh);           // METERS
-    float GetCylinderCenterOfMassX(ros::NodeHandle& nh);    // METERS
-    float GetCylinderCenterOfMassY(ros::NodeHandle& nh);    // METERS
-    float GetCylinderCenterOfMassZ(ros::NodeHandle& nh);    // METERS
+    float GetCylinderRadius(const std::shared_ptr<rclcpp::Node>& nh);           // METERS
+    float GetCylinderHeight(const std::shared_ptr<rclcpp::Node>& nh);           // METERS
+    float GetCylinderCenterOfMassX(const std::shared_ptr<rclcpp::Node>& nh);    // METERS
+    float GetCylinderCenterOfMassY(const std::shared_ptr<rclcpp::Node>& nh);    // METERS
+    float GetCylinderCenterOfMassZ(const std::shared_ptr<rclcpp::Node>& nh);    // METERS
 
     // Cylinder Size settings for WAFR task case
-    float GetWafrCylinderRadius(ros::NodeHandle& nh);       // METERS
-    float GetWafrCylinderHeight(ros::NodeHandle& nh);       // METERS
-    float GetWafrCylinderRelativeCenterOfMassX(ros::NodeHandle& nh);    // METERS
-    float GetWafrCylinderRelativeCenterOfMassY(ros::NodeHandle& nh);    // METERS
-    float GetWafrCylinderRelativeCenterOfMassZ(ros::NodeHandle& nh);    // METERS
+    float GetWafrCylinderRadius(const std::shared_ptr<rclcpp::Node>& nh);       // METERS
+    float GetWafrCylinderHeight(const std::shared_ptr<rclcpp::Node>& nh);       // METERS
+    float GetWafrCylinderRelativeCenterOfMassX(const std::shared_ptr<rclcpp::Node>& nh);    // METERS
+    float GetWafrCylinderRelativeCenterOfMassY(const std::shared_ptr<rclcpp::Node>& nh);    // METERS
+    float GetWafrCylinderRelativeCenterOfMassZ(const std::shared_ptr<rclcpp::Node>& nh);    // METERS
 
     ////////////////////////////////////////////////////////////////////////////
     // Rope Maze Wall Size and Visibility Settings
     ////////////////////////////////////////////////////////////////////////////
 
-    float GetWallHeight(ros::NodeHandle& nh);           // METERS
-    float GetWallCenterOfMassZ(ros::NodeHandle& nh);    // METERS
-    float GetOuterWallsAlpha(ros::NodeHandle& nh);      // 0.0 thru 1.0 (inclusive)
-    float GetFloorDividerAlpha(ros::NodeHandle& nh);    // 0.0 thru 1.0 (inclusive)
-    float GetFirstFloorAlpha(ros::NodeHandle& nh);      // 0.0 thru 1.0 (inclusive)
-    float GetSecondFloorAlpha(ros::NodeHandle& nh);     // 0.0 thru 1.0 (inclusive)
+    float GetWallHeight(const std::shared_ptr<rclcpp::Node>& nh);           // METERS
+    float GetWallCenterOfMassZ(const std::shared_ptr<rclcpp::Node>& nh);    // METERS
+    float GetOuterWallsAlpha(const std::shared_ptr<rclcpp::Node>& nh);      // 0.0 thru 1.0 (inclusive)
+    float GetFloorDividerAlpha(const std::shared_ptr<rclcpp::Node>& nh);    // 0.0 thru 1.0 (inclusive)
+    float GetFirstFloorAlpha(const std::shared_ptr<rclcpp::Node>& nh);      // 0.0 thru 1.0 (inclusive)
+    float GetSecondFloorAlpha(const std::shared_ptr<rclcpp::Node>& nh);     // 0.0 thru 1.0 (inclusive)
 
     ////////////////////////////////////////////////////////////////////////////
     // Rope Settings
     ////////////////////////////////////////////////////////////////////////////
 
-    float GetRopeSegmentLength(ros::NodeHandle& nh);    // METERS
-    float GetRopeRadius(ros::NodeHandle& nh);           // METERS
-    int GetRopeNumLinks(ros::NodeHandle& nh);
-    float GetRopeExtensionVectorX(ros::NodeHandle& nh);
-    float GetRopeExtensionVectorY(ros::NodeHandle& nh);
-    float GetRopeExtensionVectorZ(ros::NodeHandle& nh);
+    float GetRopeSegmentLength(const std::shared_ptr<rclcpp::Node>& nh);    // METERS
+    float GetRopeRadius(const std::shared_ptr<rclcpp::Node>& nh);           // METERS
+    int GetRopeNumLinks(const std::shared_ptr<rclcpp::Node>& nh);
+    float GetRopeExtensionVectorX(const std::shared_ptr<rclcpp::Node>& nh);
+    float GetRopeExtensionVectorY(const std::shared_ptr<rclcpp::Node>& nh);
+    float GetRopeExtensionVectorZ(const std::shared_ptr<rclcpp::Node>& nh);
 
     ////////////////////////////////////////////////////////////////////////////
     // Rope starting position settings
     ////////////////////////////////////////////////////////////////////////////
 
-    float GetRopeCenterOfMassX(ros::NodeHandle& nh);    // METERS
-    float GetRopeCenterOfMassY(ros::NodeHandle& nh);    // METERS
-    float GetRopeCenterOfMassZ(ros::NodeHandle& nh);    // METERS
+    float GetRopeCenterOfMassX(const std::shared_ptr<rclcpp::Node>& nh);    // METERS
+    float GetRopeCenterOfMassY(const std::shared_ptr<rclcpp::Node>& nh);    // METERS
+    float GetRopeCenterOfMassZ(const std::shared_ptr<rclcpp::Node>& nh);    // METERS
 
     ////////////////////////////////////////////////////////////////////////////
     // Cloth settings
     ////////////////////////////////////////////////////////////////////////////
 
-    float GetClothXSize(ros::NodeHandle& nh);           // METERS
-    float GetClothYSize(ros::NodeHandle& nh);           // METERS
-    float GetClothCenterOfMassX(ros::NodeHandle& nh);   // METERS
-    float GetClothCenterOfMassY(ros::NodeHandle& nh);   // METERS
-    float GetClothCenterOfMassZ(ros::NodeHandle& nh);   // METERS
-    float GetClothLinearStiffness(ros::NodeHandle& nh);
+    float GetClothXSize(const std::shared_ptr<rclcpp::Node>& nh);           // METERS
+    float GetClothYSize(const std::shared_ptr<rclcpp::Node>& nh);           // METERS
+    float GetClothCenterOfMassX(const std::shared_ptr<rclcpp::Node>& nh);   // METERS
+    float GetClothCenterOfMassY(const std::shared_ptr<rclcpp::Node>& nh);   // METERS
+    float GetClothCenterOfMassZ(const std::shared_ptr<rclcpp::Node>& nh);   // METERS
+    float GetClothLinearStiffness(const std::shared_ptr<rclcpp::Node>& nh);
 
     ////////////////////////////////////////////////////////////////////////////
     // Cloth BulletPhysics settings
     ////////////////////////////////////////////////////////////////////////////
 
-    int GetClothNumControlPointsX(ros::NodeHandle& nh);
-    int GetClothNumControlPointsY(ros::NodeHandle& nh);
+    int GetClothNumControlPointsX(const std::shared_ptr<rclcpp::Node>& nh);
+    int GetClothNumControlPointsY(const std::shared_ptr<rclcpp::Node>& nh);
 
     ////////////////////////////////////////////////////////////////////////////
     // Generic target patch settings
     ////////////////////////////////////////////////////////////////////////////
 
-    float GetCoverRegionXMin(ros::NodeHandle& nh);  // METERS
-    size_t GetCoverRegionXSteps(ros::NodeHandle& nh);
-    float GetCoverRegionXRes(ros::NodeHandle& nh);  // METERS
-    float GetCoverRegionYMin(ros::NodeHandle& nh);  // METERS
-    size_t GetCoverRegionYSteps(ros::NodeHandle& nh);
-    float GetCoverRegionYRes(ros::NodeHandle& nh);  // METERS
-    float GetCoverRegionZMin(ros::NodeHandle& nh);  // METERS
-    size_t GetCoverRegionZSteps(ros::NodeHandle& nh);
-    float GetCoverRegionZRes(ros::NodeHandle& nh);  // METERS
+    float GetCoverRegionXMin(const std::shared_ptr<rclcpp::Node>& nh);  // METERS
+    size_t GetCoverRegionXSteps(const std::shared_ptr<rclcpp::Node>& nh);
+    float GetCoverRegionXRes(const std::shared_ptr<rclcpp::Node>& nh);  // METERS
+    float GetCoverRegionYMin(const std::shared_ptr<rclcpp::Node>& nh);  // METERS
+    size_t GetCoverRegionYSteps(const std::shared_ptr<rclcpp::Node>& nh);
+    float GetCoverRegionYRes(const std::shared_ptr<rclcpp::Node>& nh);  // METERS
+    float GetCoverRegionZMin(const std::shared_ptr<rclcpp::Node>& nh);  // METERS
+    size_t GetCoverRegionZSteps(const std::shared_ptr<rclcpp::Node>& nh);
+    float GetCoverRegionZRes(const std::shared_ptr<rclcpp::Node>& nh);  // METERS
 
     ////////////////////////////////////////////////////////////////////////////
     // Simulator settings
     ////////////////////////////////////////////////////////////////////////////
 
-    size_t GetNumSimstepsPerGripperCommand(ros::NodeHandle& nh);
-    float GetSettlingTime(ros::NodeHandle& nh, const float default_time = 4.0);
-    double GetTFWaitTime(ros::NodeHandle& nh, const double default_time = 4.0);
+    size_t GetNumSimstepsPerGripperCommand(const std::shared_ptr<rclcpp::Node>& nh);
+    float GetSettlingTime(const std::shared_ptr<rclcpp::Node>& nh, const float default_time = 4.0);
+    double GetTFWaitTime(const std::shared_ptr<rclcpp::Node>& nh, const double default_time = 4.0);
 
     ////////////////////////////////////////////////////////////////////////////
     // Robot settings
     ////////////////////////////////////////////////////////////////////////////
 
-    double GetRobotControlPeriod(ros::NodeHandle& nh);      // SECONDS
-    double GetMaxGripperVelocityNorm(ros::NodeHandle& nh);  // SE(3) velocity
-    double GetMaxDOFVelocityNorm(ros::NodeHandle& nh);      // rad/s
+    double GetRobotControlPeriod(const std::shared_ptr<rclcpp::Node>& nh);      // SECONDS
+    double GetMaxGripperVelocityNorm(const std::shared_ptr<rclcpp::Node>& nh);  // SE(3) velocity
+    double GetMaxDOFVelocityNorm(const std::shared_ptr<rclcpp::Node>& nh);      // rad/s
 
     ////////////////////////////////////////////////////////////////////////////
     // World size settings for Graph/Dijkstras - DEFINED IN BULLET FRAME, but WORLD SIZES
     ////////////////////////////////////////////////////////////////////////////
 
-    double GetWorldXStep(ros::NodeHandle& nh);              // METERS
-    double GetWorldXMinBulletFrame(ros::NodeHandle& nh);    // METERS
-    double GetWorldXMaxBulletFrame(ros::NodeHandle& nh);    // METERS
-    int64_t GetWorldXNumSteps(ros::NodeHandle& nh);
-    double GetWorldYStep(ros::NodeHandle& nh);              // METERS
-    double GetWorldYMinBulletFrame(ros::NodeHandle& nh);    // METERS
-    double GetWorldYMaxBulletFrame(ros::NodeHandle& nh);    // METERS
-    int64_t GetWorldYNumSteps(ros::NodeHandle& nh);
-    double GetWorldZStep(ros::NodeHandle& nh);              // METERS
-    double GetWorldZMinBulletFrame(ros::NodeHandle& nh);    // METERS
-    double GetWorldZMaxBulletFrame(ros::NodeHandle& nh);    // METERS
-    int64_t GetWorldZNumSteps(ros::NodeHandle& nh);
-    double GetWorldResolution(ros::NodeHandle& nh);         // METERS
+    double GetWorldXStep(const std::shared_ptr<rclcpp::Node>& nh);              // METERS
+    double GetWorldXMinBulletFrame(const std::shared_ptr<rclcpp::Node>& nh);    // METERS
+    double GetWorldXMaxBulletFrame(const std::shared_ptr<rclcpp::Node>& nh);    // METERS
+    int64_t GetWorldXNumSteps(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetWorldYStep(const std::shared_ptr<rclcpp::Node>& nh);              // METERS
+    double GetWorldYMinBulletFrame(const std::shared_ptr<rclcpp::Node>& nh);    // METERS
+    double GetWorldYMaxBulletFrame(const std::shared_ptr<rclcpp::Node>& nh);    // METERS
+    int64_t GetWorldYNumSteps(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetWorldZStep(const std::shared_ptr<rclcpp::Node>& nh);              // METERS
+    double GetWorldZMinBulletFrame(const std::shared_ptr<rclcpp::Node>& nh);    // METERS
+    double GetWorldZMaxBulletFrame(const std::shared_ptr<rclcpp::Node>& nh);    // METERS
+    int64_t GetWorldZNumSteps(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetWorldResolution(const std::shared_ptr<rclcpp::Node>& nh);         // METERS
 
     // Is used as a scale factor relative to GetWorldResolution.
     // The resulting voxel sizes in the SDF are
     // GetWorldResolution() / GetSDFResolutionScale() in size.
-    int GetSDFResolutionScale(ros::NodeHandle& nh);
+    int GetSDFResolutionScale(const std::shared_ptr<rclcpp::Node>& nh);
 
     ////////////////////////////////////////////////////////////////////////////
     // Planner trial type settings
     ////////////////////////////////////////////////////////////////////////////
 
-    TrialType GetTrialType(ros::NodeHandle& nh);
-    MABAlgorithm GetMABAlgorithm(ros::NodeHandle& nh);
+    TrialType GetTrialType(const std::shared_ptr<rclcpp::Node>& nh);
+    MABAlgorithm GetMABAlgorithm(const std::shared_ptr<rclcpp::Node>& nh);
 
     ////////////////////////////////////////////////////////////////////////////
     // Diminishing Rigidity Model Parameters
     ////////////////////////////////////////////////////////////////////////////
 
-    double GetDefaultDeformability(ros::NodeHandle& nh);
+    double GetDefaultDeformability(const std::shared_ptr<rclcpp::Node>& nh);
 
     ////////////////////////////////////////////////////////////////////////////
     // Adaptive Jacobian Model Parameters
     ////////////////////////////////////////////////////////////////////////////
 
-    double GetAdaptiveModelLearningRate(ros::NodeHandle& nh);
+    double GetAdaptiveModelLearningRate(const std::shared_ptr<rclcpp::Node>& nh);
 
     ////////////////////////////////////////////////////////////////////////////
     // Constraint Model Parameters
     ////////////////////////////////////////////////////////////////////////////
 
-    double GetConstraintTranslationalDir(ros::NodeHandle& nh);
-    double GetConstraintTranslationalDis(ros::NodeHandle& nh);
-    double GetConstraintRotational(ros::NodeHandle& nh);
-    double GetConstraintTranslationalOldVersion(ros::NodeHandle& nh);
+    double GetConstraintTranslationalDir(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetConstraintTranslationalDis(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetConstraintRotational(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetConstraintTranslationalOldVersion(const std::shared_ptr<rclcpp::Node>& nh);
 
     ////////////////////////////////////////////////////////////////////////////
     // Bandit Multi-model settings
     ////////////////////////////////////////////////////////////////////////////
 
-    bool GetCollectResultsForAllModels(ros::NodeHandle& nh);
-    double GetRewardScaleAnnealingFactor(ros::NodeHandle& nh);
-    double GetRewardScaleFactorStart(ros::NodeHandle& nh);
-    double GetProcessNoiseFactor(ros::NodeHandle& nh);
-    double GetObservationNoiseFactor(ros::NodeHandle& nh);
-    double GetCorrelationStrengthFactor(ros::NodeHandle& nh);
-    double GetDeformabilityRangeMin(ros::NodeHandle& nh);
-    double GetDeformabilityRangeMax(ros::NodeHandle& nh);
-    double GetDeformabilityRangeStep(ros::NodeHandle& nh);
-    double GetAdaptiveLearningRateRangeMin(ros::NodeHandle& nh);
-    double GetAdaptiveLearningRateRangeMax(ros::NodeHandle& nh);
-    double GetAdaptiveLearningRateRangeStep(ros::NodeHandle& nh);
+    bool GetCollectResultsForAllModels(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetRewardScaleAnnealingFactor(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetRewardScaleFactorStart(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetProcessNoiseFactor(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetObservationNoiseFactor(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetCorrelationStrengthFactor(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetDeformabilityRangeMin(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetDeformabilityRangeMax(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetDeformabilityRangeStep(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetAdaptiveLearningRateRangeMin(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetAdaptiveLearningRateRangeMax(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetAdaptiveLearningRateRangeStep(const std::shared_ptr<rclcpp::Node>& nh);
 
     ////////////////////////////////////////////////////////////////////////////
     // Planner settings
     ////////////////////////////////////////////////////////////////////////////
 
-    bool GetUseRandomSeed(ros::NodeHandle& nh);
-    size_t GetPlannerSeed(ros::NodeHandle& nh);
+    bool GetUseRandomSeed(const std::shared_ptr<rclcpp::Node>& nh);
+    size_t GetPlannerSeed(const std::shared_ptr<rclcpp::Node>& nh);
 
     ////////////////////////////////////////////////////////////////////////////
     // Planner - Stuck detection settings
     ////////////////////////////////////////////////////////////////////////////
 
-    bool GetEnableStuckDetection(ros::NodeHandle& nh);
-    size_t GetNumLookaheadSteps(ros::NodeHandle& nh);
-    double GetRubberBandOverstretchPredictionAnnealingFactor(ros::NodeHandle& nh);
-    size_t GetMaxGrippersPoseHistoryLength(ros::NodeHandle& nh);
-    double GetErrorDeltaThresholdForProgress(ros::NodeHandle& nh);
-    double GetGrippersDistanceDeltaThresholdForProgress(ros::NodeHandle& nh);
+    bool GetEnableStuckDetection(const std::shared_ptr<rclcpp::Node>& nh);
+    size_t GetNumLookaheadSteps(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetRubberBandOverstretchPredictionAnnealingFactor(const std::shared_ptr<rclcpp::Node>& nh);
+    size_t GetMaxGrippersPoseHistoryLength(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetErrorDeltaThresholdForProgress(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetGrippersDistanceDeltaThresholdForProgress(const std::shared_ptr<rclcpp::Node>& nh);
 
     ////////////////////////////////////////////////////////////////////////////
     // Planner - RRT settings
     ////////////////////////////////////////////////////////////////////////////
 
-    bool GetRRTReuseOldResults(ros::NodeHandle& nh);
-    bool GetRRTStoreNewResults(ros::NodeHandle& nh);
+    bool GetRRTReuseOldResults(const std::shared_ptr<rclcpp::Node>& nh);
+    bool GetRRTStoreNewResults(const std::shared_ptr<rclcpp::Node>& nh);
     double GetRRTHomotopyDistancePenalty();
-    double GetRRTBandDistance2ScalingFactor(ros::NodeHandle& nh);
-    size_t GetRRTBandMaxPoints(ros::NodeHandle& nh);
-    double GetRRTMaxRobotDOFStepSize(ros::NodeHandle& nh);
-    double GetRRTMinRobotDOFStepSize(ros::NodeHandle& nh);
-    double GetRRTMaxGripperRotation(ros::NodeHandle& nh);
-    double GetRRTGoalBias(ros::NodeHandle& nh);
-    double GetRRTBestNearRadius(ros::NodeHandle& nh);
-    double GetRRTFeasibilityDistanceScaleFactor(ros::NodeHandle& nh);
-    int64_t GetRRTMaxShortcutIndexDistance(ros::NodeHandle& nh);
-    uint32_t GetRRTMaxSmoothingIterations(ros::NodeHandle& nh);
-    double GetRRTSmoothingBandDistThreshold(ros::NodeHandle& nh);
-    double GetRRTTimeout(ros::NodeHandle& nh);
-    size_t GetRRTNumTrials(ros::NodeHandle& nh);
-    double GetRRTPlanningXMinBulletFrame(ros::NodeHandle& nh);
-    double GetRRTPlanningXMaxBulletFrame(ros::NodeHandle& nh);
-    double GetRRTPlanningYMinBulletFrame(ros::NodeHandle& nh);
-    double GetRRTPlanningYMaxBulletFrame(ros::NodeHandle& nh);
-    double GetRRTPlanningZMinBulletFrame(ros::NodeHandle& nh);
-    double GetRRTPlanningZMaxBulletFrame(ros::NodeHandle& nh);
-    bool GetUseCBiRRTStyleProjection(ros::NodeHandle& nh);
-    size_t GetRRTForwardTreeExtendIterations(ros::NodeHandle& nh);
-    size_t GetRRTBackwardTreeExtendIterations(ros::NodeHandle& nh);
-    bool GetRRTUseBruteForceNN(ros::NodeHandle& nh);
-    size_t GetRRTKdTreeGrowThreshold(ros::NodeHandle& nh);
-    bool GetRRTTestPathsInBullet(ros::NodeHandle& nh);
+    double GetRRTBandDistance2ScalingFactor(const std::shared_ptr<rclcpp::Node>& nh);
+    size_t GetRRTBandMaxPoints(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetRRTMaxRobotDOFStepSize(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetRRTMinRobotDOFStepSize(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetRRTMaxGripperRotation(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetRRTGoalBias(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetRRTBestNearRadius(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetRRTFeasibilityDistanceScaleFactor(const std::shared_ptr<rclcpp::Node>& nh);
+    int64_t GetRRTMaxShortcutIndexDistance(const std::shared_ptr<rclcpp::Node>& nh);
+    uint32_t GetRRTMaxSmoothingIterations(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetRRTSmoothingBandDistThreshold(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetRRTTimeout(const std::shared_ptr<rclcpp::Node>& nh);
+    size_t GetRRTNumTrials(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetRRTPlanningXMinBulletFrame(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetRRTPlanningXMaxBulletFrame(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetRRTPlanningYMinBulletFrame(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetRRTPlanningYMaxBulletFrame(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetRRTPlanningZMinBulletFrame(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetRRTPlanningZMaxBulletFrame(const std::shared_ptr<rclcpp::Node>& nh);
+    bool GetUseCBiRRTStyleProjection(const std::shared_ptr<rclcpp::Node>& nh);
+    size_t GetRRTForwardTreeExtendIterations(const std::shared_ptr<rclcpp::Node>& nh);
+    size_t GetRRTBackwardTreeExtendIterations(const std::shared_ptr<rclcpp::Node>& nh);
+    bool GetRRTUseBruteForceNN(const std::shared_ptr<rclcpp::Node>& nh);
+    size_t GetRRTKdTreeGrowThreshold(const std::shared_ptr<rclcpp::Node>& nh);
+    bool GetRRTTestPathsInBullet(const std::shared_ptr<rclcpp::Node>& nh);
 
     ////////////////////////////////////////////////////////////////////////////
     // Transition Learning Parameters
     ////////////////////////////////////////////////////////////////////////////
 
-    double GetTransitionMistakeThreshold(ros::NodeHandle& nh);
-    double GetTransitionDefaultPropagationConfidence(ros::NodeHandle& nh);
-    double GetTransitionDefaultBandDistThreshold(ros::NodeHandle& nh);
-    double GetTransitionConfidenceThreshold(ros::NodeHandle& nh);
-    double GetTransitionTemplateMisalignmentScaleFactor(ros::NodeHandle& nh);
-    double GetTransitionTightenDeltaScaleFactor(ros::NodeHandle& nh);
-    double GetTransitionHomotopyChangesScaleFactor(ros::NodeHandle& nh);
+    double GetTransitionMistakeThreshold(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetTransitionDefaultPropagationConfidence(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetTransitionDefaultBandDistThreshold(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetTransitionConfidenceThreshold(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetTransitionTemplateMisalignmentScaleFactor(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetTransitionTightenDeltaScaleFactor(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetTransitionHomotopyChangesScaleFactor(const std::shared_ptr<rclcpp::Node>& nh);
 
-    ClassifierType GetClassifierType(ros::NodeHandle& nh);
+    ClassifierType GetClassifierType(const std::shared_ptr<rclcpp::Node>& nh);
 
     ////////////////////////////////////////////////////////////////////////////
     // Pure Jacobian based motion controller paramters
     ////////////////////////////////////////////////////////////////////////////
 
-    bool GetJacobianControllerOptimizationEnabled(ros::NodeHandle& nh);
-    double GetCollisionScalingFactor(ros::NodeHandle& nh);
+    bool GetJacobianControllerOptimizationEnabled(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetCollisionScalingFactor(const std::shared_ptr<rclcpp::Node>& nh);
 
     ////////////////////////////////////////////////////////////////////////////
     // Stretching constraint controller parameters
     ////////////////////////////////////////////////////////////////////////////
 
-    StretchingConstraintControllerSolverType GetStretchingConstraintControllerSolverType(ros::NodeHandle& nh);
-    int64_t GetMaxSamplingCounts(ros::NodeHandle& nh);
-    bool GetUseFixedGripperDeltaSize(ros::NodeHandle& nh);
-    double GetStretchingCosineThreshold(ros::NodeHandle& nh);
-    bool GetVisualizeOverstretchCones(ros::NodeHandle& nh);
+    StretchingConstraintControllerSolverType GetStretchingConstraintControllerSolverType(const std::shared_ptr<rclcpp::Node>& nh);
+    int64_t GetMaxSamplingCounts(const std::shared_ptr<rclcpp::Node>& nh);
+    bool GetUseFixedGripperDeltaSize(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetStretchingCosineThreshold(const std::shared_ptr<rclcpp::Node>& nh);
+    bool GetVisualizeOverstretchCones(const std::shared_ptr<rclcpp::Node>& nh);
 
     ////////////////////////////////////////////////////////////////////////////
     // Straight line motion parameters for testing model accuracy
@@ -326,68 +326,68 @@ namespace smmap
     ////////////////////////////////////////////////////////////////////////////
 
     std::pair<std::vector<double>, std::vector<Eigen::Matrix<double, 6, 1>>>
-    GetGripperDeltaTrajectory(ros::NodeHandle& nh, const std::string& gripper_name);
-    double GetGripperStraightLineMotionTransX(ros::NodeHandle& nh);
-    double GetGripperStraightLineMotionTransY(ros::NodeHandle& nh);
-    double GetGripperStraightLineMotionTransZ(ros::NodeHandle& nh);
-    double GetGripperStraightLineMotionAngularX(ros::NodeHandle& nh);
-    double GetGripperStraightLineMotionAngularY(ros::NodeHandle& nh);
-    double GetGripperStraightLineMotionAngularZ(ros::NodeHandle& nh);
+    GetGripperDeltaTrajectory(const std::shared_ptr<rclcpp::Node>& nh, const std::string& gripper_name);
+    double GetGripperStraightLineMotionTransX(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetGripperStraightLineMotionTransY(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetGripperStraightLineMotionTransZ(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetGripperStraightLineMotionAngularX(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetGripperStraightLineMotionAngularY(const std::shared_ptr<rclcpp::Node>& nh);
+    double GetGripperStraightLineMotionAngularZ(const std::shared_ptr<rclcpp::Node>& nh);
 
     ////////////////////////////////////////////////////////////////////////////
     // Logging functionality
     ////////////////////////////////////////////////////////////////////////////
 
-    bool GetBanditsLoggingEnabled(ros::NodeHandle& nh);
-    bool GetControllerLoggingEnabled(ros::NodeHandle& nh);
-    std::string GetLogFolder(ros::NodeHandle& nh);
-    std::string GetDataFolder(ros::NodeHandle& nh);
-    std::string GetDijkstrasStorageLocation(ros::NodeHandle& nh);
-    std::string GetCollisionMapStorageLocation(ros::NodeHandle& nh);
-    bool GetScreenshotsEnabled(ros::NodeHandle& nh);
-    std::string GetScreenshotFolder(ros::NodeHandle& nh);
+    bool GetBanditsLoggingEnabled(const std::shared_ptr<rclcpp::Node>& nh);
+    bool GetControllerLoggingEnabled(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetLogFolder(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetDataFolder(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetDijkstrasStorageLocation(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetCollisionMapStorageLocation(const std::shared_ptr<rclcpp::Node>& nh);
+    bool GetScreenshotsEnabled(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetScreenshotFolder(const std::shared_ptr<rclcpp::Node>& nh);
 
     ////////////////////////////////////////////////////////////////////////////
     // ROS Topic settings
     ////////////////////////////////////////////////////////////////////////////
 
-    std::string GetTestRobotMotionTopic(ros::NodeHandle& nh);
-    std::string GetExecuteRobotMotionTopic(ros::NodeHandle& nh);
-    std::string GetTestRobotMotionMicrostepsTopic(ros::NodeHandle& nh);
-    std::string GetGenerateTransitionDataTopic(ros::NodeHandle& nh);
-    std::string GetTestRobotPathsTopic(ros::NodeHandle& nh);
-    std::string GetWorldStateTopic(ros::NodeHandle& nh);
-    std::string GetCoverPointsTopic(ros::NodeHandle& nh);
-    std::string GetCoverPointNormalsTopic(ros::NodeHandle& nh);
-    std::string GetMirrorLineTopic(ros::NodeHandle& nh);
-    std::string GetFreeSpaceGraphTopic(ros::NodeHandle& nh);
-    std::string GetSignedDistanceFieldTopic(ros::NodeHandle& nh);
-    std::string GetGripperNamesTopic(ros::NodeHandle& nh);
-    std::string GetGripperAttachedNodeIndicesTopic(ros::NodeHandle& nh);
-    std::string GetGripperStretchingVectorInfoTopic(ros::NodeHandle& nh);
-    std::string GetGripperPoseTopic(ros::NodeHandle& nh);
-    std::string GetRobotConfigurationTopic(ros::NodeHandle& nh);
-    std::string GetObjectInitialConfigurationTopic(ros::NodeHandle& nh);
-    std::string GetObjectCurrentConfigurationTopic(ros::NodeHandle& nh);
-    std::string GetRopeCurrentNodeTransformsTopic(ros::NodeHandle& nh);
-    std::string GetVisualizationMarkerTopic(ros::NodeHandle& nh);
-    std::string GetVisualizationMarkerArrayTopic(ros::NodeHandle& nh);
-    std::string GetClearVisualizationsTopic(ros::NodeHandle& nh);
-    std::string GetConfidenceTopic(ros::NodeHandle& nh);
-    std::string GetConfidenceImageTopic(ros::NodeHandle& nh);
-    std::string GetGripperCollisionCheckTopic(ros::NodeHandle& nh);
-    std::string GetRestartSimulationTopic(ros::NodeHandle& nh);
-    std::string GetTerminateSimulationTopic(ros::NodeHandle& nh);
+    std::string GetTestRobotMotionTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetExecuteRobotMotionTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetTestRobotMotionMicrostepsTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetGenerateTransitionDataTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetTestRobotPathsTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetWorldStateTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetCoverPointsTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetCoverPointNormalsTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetMirrorLineTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetFreeSpaceGraphTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetSignedDistanceFieldTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetGripperNamesTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetGripperAttachedNodeIndicesTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetGripperStretchingVectorInfoTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetGripperPoseTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetRobotConfigurationTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetObjectInitialConfigurationTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetObjectCurrentConfigurationTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetRopeCurrentNodeTransformsTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetVisualizationMarkerTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetVisualizationMarkerArrayTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetClearVisualizationsTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetConfidenceTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetConfidenceImageTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetGripperCollisionCheckTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetRestartSimulationTopic(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetTerminateSimulationTopic(const std::shared_ptr<rclcpp::Node>& nh);
 
     ////////////////////////////////////////////////////////////////////////////
     // Live Robot Settings
     ////////////////////////////////////////////////////////////////////////////
 
-    std::string GetGripper0Name(ros::NodeHandle& nh);
-    std::string GetGripper1Name(ros::NodeHandle& nh);
-    std::string GetGripper0TFName(ros::NodeHandle& nh);
-    std::string GetGripper1TFName(ros::NodeHandle& nh);
-    size_t GetGripperAttachedIdx(ros::NodeHandle& nh, const std::string& gripper_name);
+    std::string GetGripper0Name(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetGripper1Name(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetGripper0TFName(const std::shared_ptr<rclcpp::Node>& nh);
+    std::string GetGripper1TFName(const std::shared_ptr<rclcpp::Node>& nh);
+    size_t GetGripperAttachedIdx(const std::shared_ptr<rclcpp::Node>& nh, const std::string& gripper_name);
 
     ////////////////////////////////////////////////////////////////////////////
     // ROS TF Frame name settings
