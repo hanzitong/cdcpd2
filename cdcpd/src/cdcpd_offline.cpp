@@ -75,7 +75,7 @@ std::pair<Eigen::Matrix3Xf, Eigen::Matrix2Xi> makeRopeTemplate(int const num_poi
 }
 
 PointCloud::Ptr makeCloud(Eigen::Matrix3Xf const& points) {
-  // TODO: Can we do this cleaner via some sort of data mapping?
+  // HSV color mapping for mask generation
   PointCloud::Ptr cloud(new PointCloud);
   for (int i = 0; i < points.cols(); ++i) {
     auto const& c = points.col(i);
@@ -229,7 +229,7 @@ int main(int argc, char* argv[]) {
 
     auto out = cdcpd(rgb, depth, hsv_mask, intrinsics, tracked_points, obstacle_constraints, max_segment_length,
                              q_dot, q_config, gripper_idx);
-    tracked_points = out.gurobi_output;
+    tracked_points = out.optimized_output;
 
     // publish
     // Update the frame ids
@@ -238,7 +238,7 @@ int main(int argc, char* argv[]) {
       out.masked_point_cloud->header.frame_id = frame_id;
       out.downsampled_cloud->header.frame_id = frame_id;
       out.cpd_output->header.frame_id = frame_id;
-      out.gurobi_output->header.frame_id = frame_id;
+      out.optimized_output->header.frame_id = frame_id;
     }
 
     // Add timestamp information
@@ -249,7 +249,7 @@ int main(int argc, char* argv[]) {
       out.masked_point_cloud->header.stamp = pcl_time;
       out.downsampled_cloud->header.stamp = pcl_time;
       out.cpd_output->header.stamp = pcl_time;
-      out.gurobi_output->header.stamp = pcl_time;
+      out.optimized_output->header.stamp = pcl_time;
     }
 
     // Publish the point clouds
@@ -273,7 +273,7 @@ int main(int argc, char* argv[]) {
       msg.header.frame_id = frame_id;
       template_publisher->publish(msg);
       
-      pcl::toROSMsg(*out.gurobi_output, msg);
+      pcl::toROSMsg(*out.optimized_output, msg);
       msg.header.frame_id = frame_id;
       output_publisher->publish(msg);
     }

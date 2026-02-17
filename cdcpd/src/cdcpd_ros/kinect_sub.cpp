@@ -19,10 +19,10 @@ KinectSub::KinectSub(const std::function<void(cv::Mat, cv::Mat, cv::Matx33d)>& _
   
   // Create subscribers
   rgb_sub = std::make_shared<image_transport::SubscriberFilter>();
-  rgb_sub->subscribe(options.node, options.rgb_topic, "raw");
+  rgb_sub->subscribe(options.node.get(), options.rgb_topic, "raw");
   
   depth_sub = std::make_shared<image_transport::SubscriberFilter>();
-  depth_sub->subscribe(options.node, options.depth_topic, "raw");
+  depth_sub->subscribe(options.node.get(), options.depth_topic, "raw");
   
   cam_sub = std::make_shared<message_filters::Subscriber<sm::CameraInfo>>(
       options.node, options.cam_topic);
@@ -57,7 +57,7 @@ void KinectSub::imageCb(const sm::Image::ConstSharedPtr& rgb_msg,
   if (depth_msg->encoding != sensor_msgs::image_encodings::TYPE_16UC1) {
     RCLCPP_INFO_THROTTLE(rclcpp::get_logger("KinectSub"), *options.node->get_clock(), 10000,
                          "Depth message is not in %s format. Converting.", 
-                         sensor_msgs::image_encodings::TYPE_16UC1.c_str());
+                         sensor_msgs::image_encodings::TYPE_16UC1);
     if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_32FC1) {
       cv::Mat convertedDepthImg(cv_depth_ptr->image.size(), CV_16UC1);
 

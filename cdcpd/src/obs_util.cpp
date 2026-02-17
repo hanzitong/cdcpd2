@@ -8,7 +8,7 @@ using Eigen::Matrix3Xf;
 using Eigen::MatrixXf;
 using Eigen::Vector3f;
 
-Point_3 pointMsgtoPoint(const geometry_msgs::Point pt)
+Point_3 pointMsgtoPoint(const geometry_msgs::msg::Point pt)
 {
   return Point_3(pt.x, pt.y, pt.z);
 }
@@ -19,7 +19,7 @@ static Vector3f cgalVec2EigenVec(Vector cgal_v)
 }
 
 
-Mesh shapes_mesh_to_cgal_mesh(shape_msgs::Mesh const &input_mesh)
+Mesh shapes_mesh_to_cgal_mesh(shape_msgs::msg::Mesh const &input_mesh)
 {
   Mesh output_mesh;
   // first copy all the vertices
