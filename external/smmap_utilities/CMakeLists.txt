@@ -19,7 +19,7 @@ find_package(ament_cmake REQUIRED)
 find_package(arm_utilities REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(kinematics_toolbox REQUIRED)
-find_package(deformable_manipulation_experiment_params REQUIRED)
+# find_package(deformable_manipulation_experiment_params REQUIRED)  # Disabled - not yet converted
 find_package(deformable_manipulation_msgs REQUIRED)
 find_package(sdf_tools REQUIRED)
 
@@ -47,7 +47,7 @@ ament_target_dependencies(${PROJECT_NAME}
         arm_utilities
         geometry_msgs
         kinematics_toolbox
-        deformable_manipulation_experiment_params
+        # deformable_manipulation_experiment_params  # Disabled
         deformable_manipulation_msgs
         sdf_tools
         )
@@ -63,7 +63,7 @@ if (NOMAD_FOUND)
             arm_utilities
             geometry_msgs
             kinematics_toolbox
-            deformable_manipulation_experiment_params
+            # deformable_manipulation_experiment_params  # Disabled
             deformable_manipulation_msgs
             sdf_tools
             )
@@ -80,7 +80,7 @@ if (GUROBI_FOUND)
             arm_utilities
             geometry_msgs
             kinematics_toolbox
-            deformable_manipulation_experiment_params
+            # deformable_manipulation_experiment_params  # Disabled
             deformable_manipulation_msgs
             sdf_tools
             )
@@ -117,7 +117,7 @@ ament_export_dependencies(
         arm_utilities
         geometry_msgs
         kinematics_toolbox
-        deformable_manipulation_experiment_params
+        # deformable_manipulation_experiment_params  # Disabled
         deformable_manipulation_msgs
         sdf_tools
         Eigen3
