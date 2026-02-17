@@ -141,6 +141,15 @@ public:
 
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+  std::unique_ptr<KinectSub> kinect_sub_;  // Keep KinectSub alive as member variable
+  
+  // CDCPD algorithm state (must outlive callbacks)
+  pcl::PointCloud<pcl::PointXYZ>::Ptr tracked_points_;
+  std::unique_ptr<CDCPD> cdcpd_;
+  std::string left_tf_name_;
+  std::string right_tf_name_;
+  float max_segment_length_;
+  Eigen::MatrixXi gripper_idx_;
 
   explicit CDCPD_Moveit_Node(std::string const &robot_namespace)
       : Node("cdcpd_node"),
@@ -163,14 +172,18 @@ public:
         shared_from_this(), robot_description_param_, "cdcpd_scene_monitor");
     
     auto const scene_topic = robot_namespace_ + "/move_group/monitored_planning_scene";
-    auto const service_name = robot_namespace_ + "/get_planning_scene";
+    // Note: Do NOT call requestPlanningSceneState() here as it blocks for 5 seconds
+    // This prevents the node from responding to SIGINT during startup
     scene_monitor_->startSceneMonitor(scene_topic);
-    moveit_ready = scene_monitor_->requestPlanningSceneState(service_name);
+    
+    model_ = scene_monitor_->getRobotModel();
+    moveit_ready = (model_ != nullptr);
+    
     if (not moveit_ready) {
       RCLCPP_WARN(this->get_logger(), "Could not get the moveit planning scene. This means no obstacle constraints.");
+    } else {
+      RCLCPP_INFO(this->get_logger(), "MoveIt scene monitor started successfully");
     }
-
-    model_ = scene_monitor_->getRobotModel();
 
     // Publishers for the data, some visualizations, others consumed by other nodes
     original_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("cdcpd/original", 10);
@@ -194,57 +207,70 @@ public:
 
     // For use with TF and "fixed points" for the constrain step
     kinect_tf_name = kinect_name + "_rgb_optical_frame";
-    auto const left_tf_name = this->declare_parameter("left_tf_name", "");
-    auto const right_tf_name = this->declare_parameter("right_tf_name", "");
     auto const num_points = this->declare_parameter("rope_num_points", 11);
     auto const left_node_idx = this->declare_parameter("left_node_idx", num_points - 1);
     auto const right_node_idx = this->declare_parameter("right_node_idx", 1);
-    Eigen::MatrixXi gripper_idx(1, 2);
-    gripper_idx << left_node_idx, right_node_idx;
+    gripper_idx_ = Eigen::MatrixXi(1, 2);
+    gripper_idx_ << left_node_idx, right_node_idx;
 
     // Initial connectivity model of rope
     auto const rope_length = this->declare_parameter<float>("rope_length", 1.0);
-    auto const max_segment_length = rope_length / static_cast<float>(num_points);
-    RCLCPP_DEBUG_STREAM(this->get_logger(), "max segment length " << max_segment_length);
+    max_segment_length_ = rope_length / static_cast<float>(num_points);
+    RCLCPP_DEBUG_STREAM(this->get_logger(), "max segment length " << max_segment_length_);
     
     // Variables to be initialized
-    pcl::PointCloud<pcl::PointXYZ>::Ptr tracked_points;
     Eigen::Matrix2Xi template_edges;
     
     // Only wait for TF if gripper frame names are provided
-    if (!left_tf_name.empty() && !right_tf_name.empty()) {
+    left_tf_name_ = this->declare_parameter("left_tf_name", "");
+    right_tf_name_ = this->declare_parameter("right_tf_name", "");
+    
+    if (!left_tf_name_.empty() && !right_tf_name_.empty()) {
       RCLCPP_INFO(this->get_logger(), "Waiting for TF frames: %s and %s...", 
-                  left_tf_name.c_str(), right_tf_name.c_str());
+                  left_tf_name_.c_str(), right_tf_name_.c_str());
       
-      while (rclcpp::ok()) {
+      // Note: Use a timeout instead of infinite loop to allow SIGINT handling
+      int attempts = 0;
+      const int max_attempts = 50;  // 5 seconds total (50 * 100ms)
+      while (rclcpp::ok() && attempts < max_attempts) {
         try {
-          if (tf_buffer_->canTransform(kinect_tf_name, left_tf_name, tf2::TimePointZero) and
-              tf_buffer_->canTransform(kinect_tf_name, right_tf_name, tf2::TimePointZero)) {
+          if (tf_buffer_->canTransform(kinect_tf_name, left_tf_name_, tf2::TimePointZero) and
+              tf_buffer_->canTransform(kinect_tf_name, right_tf_name_, tf2::TimePointZero)) {
             break;
           }
         } catch (tf2::TransformException const& ex) {
           RCLCPP_WARN(this->get_logger(), "Waiting for transform: %s", ex.what());
-          rclcpp::sleep_for(std::chrono::milliseconds(100));
         }
+        rclcpp::sleep_for(std::chrono::milliseconds(100));
+        attempts++;
       }
       
-      auto const left_gripper = tf_buffer_->lookupTransform(kinect_tf_name, left_tf_name, tf2::TimePointZero);
-      auto const right_gripper = tf_buffer_->lookupTransform(kinect_tf_name, right_tf_name, tf2::TimePointZero);
+      if (attempts >= max_attempts) {
+        RCLCPP_WARN(this->get_logger(), "Timeout waiting for TF frames. Using default template.");
+        // Use default template instead
+        Eigen::Vector3f const start_position(-rope_length / 2.0f, 0.0f, 0.0f);
+        Eigen::Vector3f const end_position(rope_length / 2.0f, 0.0f, 0.0f);
+        auto const [template_vertices, template_edges] = makeRopeTemplate(num_points, start_position, end_position);
+        tracked_points_ = makeCloud(template_vertices);
+      } else {
+        auto const left_gripper = tf_buffer_->lookupTransform(kinect_tf_name, left_tf_name_, tf2::TimePointZero);
+        auto const right_gripper = tf_buffer_->lookupTransform(kinect_tf_name, right_tf_name_, tf2::TimePointZero);
 
-      Eigen::Vector3f const start_position =
-        ehc::GeometryVector3ToEigenVector3d(left_gripper.transform.translation).cast<float>();
-      Eigen::Vector3f const end_position =
-          ehc::GeometryVector3ToEigenVector3d(right_gripper.transform.translation).cast<float>();
-      auto const [template_vertices, template_edges] = makeRopeTemplate(num_points, start_position, end_position);
-      tracked_points = makeCloud(template_vertices);
-      RCLCPP_INFO(this->get_logger(), "Template initialized from TF frames");
+        Eigen::Vector3f const start_position =
+          ehc::GeometryVector3ToEigenVector3d(left_gripper.transform.translation).cast<float>();
+        Eigen::Vector3f const end_position =
+            ehc::GeometryVector3ToEigenVector3d(right_gripper.transform.translation).cast<float>();
+        auto const [template_vertices, template_edges] = makeRopeTemplate(num_points, start_position, end_position);
+        tracked_points_ = makeCloud(template_vertices);
+        RCLCPP_INFO(this->get_logger(), "Template initialized from TF frames");
+      }
     } else {
       RCLCPP_WARN(this->get_logger(), "No gripper TF frames specified. Using default template.");
       // Use default positions if no TF frames are specified
       Eigen::Vector3f const start_position(-rope_length / 2.0f, 0.0f, 0.0f);
       Eigen::Vector3f const end_position(rope_length / 2.0f, 0.0f, 0.0f);
       auto const [template_vertices, template_edges] = makeRopeTemplate(num_points, start_position, end_position);
-      tracked_points = makeCloud(template_vertices);
+      tracked_points_ = makeCloud(template_vertices);
     }
 
     // Construct the initial template as a PCL cloud
@@ -262,17 +288,17 @@ public:
     auto const kinect_channel = this->declare_parameter("kinect_channel", "qhd");
     
     auto node_ptr = shared_from_this();
-    auto cdcpd = CDCPD(node_ptr, tracked_points, template_edges, use_recovery, alpha, beta, lambda, k_spring, zeta,
+    cdcpd_ = std::make_unique<CDCPD>(node_ptr, tracked_points_, template_edges, use_recovery, alpha, beta, lambda, k_spring, zeta,
                        obstacle_cost_weight);
 
-    auto const callback = [this, &cdcpd, &tracked_points, left_tf_name, right_tf_name, max_segment_length, gripper_idx, node_ptr]
+    auto const callback = [this, node_ptr]
                           (cv::Mat const& rgb, cv::Mat const& depth, cv::Matx33d const& intrinsics) {
       auto const t0 = this->now();
       smmap::AllGrippersSinglePose q_config;
       // Left Gripper
-      if (not left_tf_name.empty()) {
+      if (not left_tf_name_.empty()) {
         try {
-          auto const gripper = tf_buffer_->lookupTransform(kinect_tf_name, left_tf_name, tf2::TimePointZero);
+          auto const gripper = tf_buffer_->lookupTransform(kinect_tf_name, left_tf_name_, tf2::TimePointZero);
           auto const config = ehc::GeometryTransformToEigenIsometry3d(gripper.transform);
           RCLCPP_DEBUG_STREAM(this->get_logger(), "left gripper: " << config.translation());
           // q_config.push_back(config);  // Disabled - need to convert to GripperPose
@@ -283,13 +309,13 @@ public:
 
         } catch (tf2::TransformException const& ex) {
           RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 10000,
-              "Unable to lookup transform from %s to %s: %s", kinect_tf_name.c_str(), left_tf_name.c_str(), ex.what());
+              "Unable to lookup transform from %s to %s: %s", kinect_tf_name.c_str(), left_tf_name_.c_str(), ex.what());
         }
       }
       // Right Gripper
-      if (not right_tf_name.empty()) {
+      if (not right_tf_name_.empty()) {
         try {
-          auto const gripper = tf_buffer_->lookupTransform(kinect_tf_name, right_tf_name, tf2::TimePointZero);
+          auto const gripper = tf_buffer_->lookupTransform(kinect_tf_name, right_tf_name_, tf2::TimePointZero);
           auto const config = ehc::GeometryTransformToEigenIsometry3d(gripper.transform);
           RCLCPP_DEBUG_STREAM(this->get_logger(), "right gripper: " << config.translation());
           // q_config.push_back(config);  // Disabled - need to convert to GripperPose
@@ -300,7 +326,7 @@ public:
 
         } catch (tf2::TransformException const& ex) {
           RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 10000,
-              "Unable to lookup transform from %s to %s: %s", kinect_tf_name.c_str(), right_tf_name.c_str(), ex.what());
+              "Unable to lookup transform from %s to %s: %s", kinect_tf_name.c_str(), right_tf_name_.c_str(), ex.what());
         }
       }
 
@@ -316,8 +342,8 @@ public:
         // bbox_msg.header.stamp = this->now();
         // bbox_msg.header.frame_id = kinect_tf_name;
 
-        auto const bbox_size = extent_to_env_size(cdcpd.last_lower_bounding_box, cdcpd.last_upper_bounding_box);
-        auto const bbox_center = extent_to_center(cdcpd.last_lower_bounding_box, cdcpd.last_upper_bounding_box);
+        auto const bbox_size = extent_to_env_size(cdcpd_->last_lower_bounding_box, cdcpd_->last_upper_bounding_box);
+        auto const bbox_center = extent_to_center(cdcpd_->last_lower_bounding_box, cdcpd_->last_upper_bounding_box);
         // bbox_msg.pose.position.x = bbox_center.x();
         // bbox_msg.pose.position.y = bbox_center.y();
         // bbox_msg.pose.position.z = bbox_center.z();
@@ -332,7 +358,7 @@ public:
       {
         auto time = this->now();
         sensor_msgs::msg::PointCloud2 pcl_msg;
-        pcl::toROSMsg(*tracked_points, pcl_msg);
+        pcl::toROSMsg(*tracked_points_, pcl_msg);
         pcl_msg.header.frame_id = kinect_tf_name;
         pcl_msg.header.stamp = time;
         pre_template_publisher->publish(pcl_msg);
@@ -340,12 +366,12 @@ public:
 
       ObstacleConstraints obstacle_constraints;
       if (moveit_ready and moveit_enabled) {
-        obstacle_constraints = get_moveit_obstacle_constriants(tracked_points);
+        obstacle_constraints = get_moveit_obstacle_constriants(tracked_points_);
       }
 
-      auto const out = cdcpd(rgb, depth, hsv_mask, intrinsics, tracked_points, obstacle_constraints, max_segment_length,
-                             q_dot, q_config, gripper_idx);
-      tracked_points = out.optimized_output;
+      auto const out = (*cdcpd_)(rgb, depth, hsv_mask, intrinsics, tracked_points_, obstacle_constraints, max_segment_length_,
+                             q_dot, q_config, gripper_idx_);
+      tracked_points_ = out.optimized_output;
 
       // Update the frame ids
       {
@@ -430,10 +456,10 @@ public:
     options.node = node_ptr;  // Set node pointer for subscriptions
     // wait a second so the TF buffer can fill
     rclcpp::sleep_for(std::chrono::milliseconds(500));
-    KinectSub sub(callback, options);
+    kinect_sub_ = std::make_unique<KinectSub>(callback, options);
 
-    RCLCPP_INFO(this->get_logger(), "Spinning...");
-    rclcpp::spin(shared_from_this());
+    RCLCPP_INFO(this->get_logger(), "CDCPD node initialized and ready.");
+    // Note: spin() will be called from main()
   }
 
   ObstacleConstraints find_nearest_points_and_normals(planning_scene_monitor::LockedPlanningSceneRW planning_scene,
@@ -629,5 +655,9 @@ int main(int argc, char* argv[]) {
   // Initialize after shared_ptr is created
   cmn->init();
 
+  RCLCPP_INFO(cmn->get_logger(), "Spinning...");
+  rclcpp::spin(cmn);
+  
+  rclcpp::shutdown();
   return EXIT_SUCCESS;
 }

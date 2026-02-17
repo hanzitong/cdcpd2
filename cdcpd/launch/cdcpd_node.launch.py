@@ -38,7 +38,10 @@ def generate_launch_description():
         remappings=[
             # Add topic remappings here if needed
             # ('input_topic', 'remapped_topic'),
-        ]
+        ],
+        # IMPORTANT: Enable proper shutdown handling
+        sigterm_timeout='5',  # Wait 5 seconds for SIGTERM before SIGKILL
+        sigkill_timeout='5',  # Wait 5 seconds for SIGKILL  
     )
     
     return LaunchDescription([
