@@ -158,8 +158,9 @@ public:
   void init() {
     // Initialize scene monitor (requires shared_from_this)
     // Use robot_description parameter name without namespace
+    // Create with unique node name to avoid conflicts
     scene_monitor_ = std::make_shared<planning_scene_monitor::PlanningSceneMonitor>(
-        shared_from_this(), robot_description_param_);
+        shared_from_this(), robot_description_param_, "cdcpd_scene_monitor");
     
     auto const scene_topic = robot_namespace_ + "/move_group/monitored_planning_scene";
     auto const service_name = robot_namespace_ + "/get_planning_scene";
@@ -183,9 +184,10 @@ public:
     // bbox_pub = this->create_publisher<jsk_recognition_msgs::msg::BoundingBox>("cdcpd/bbox", 10);
 
     // Moveit Visualization (requires shared_from_this)
+    // Use unique base frame and topic names to avoid conflicts
     auto const viz_robot_state_topic = "cdcpd_moveit_node/robot_state";
     visual_tools_ = std::make_shared<moveit_visual_tools::MoveItVisualTools>(
-        shared_from_this(), "robot_root", viz_robot_state_topic, scene_monitor_);
+        shared_from_this(), "robot_root", "cdcpd_visual_tools", scene_monitor_);
     visual_tools_->loadRobotStatePub(viz_robot_state_topic, false);
 
     auto const kinect_name = this->declare_parameter("kinect_name", "kinect2");
@@ -424,7 +426,8 @@ public:
       RCLCPP_DEBUG_STREAM(this->get_logger(), "dt = " << dt << "s");
     };
 
-    auto const options = KinectSub::SubscriptionOptions(kinect_name + "/" + kinect_channel);
+    auto options = KinectSub::SubscriptionOptions(kinect_name + "/" + kinect_channel);
+    options.node = node_ptr;  // Set node pointer for subscriptions
     // wait a second so the TF buffer can fill
     rclcpp::sleep_for(std::chrono::milliseconds(500));
     KinectSub sub(callback, options);
