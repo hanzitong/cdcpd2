@@ -1,3 +1,9 @@
+// Include OpenCV early to avoid macro conflicts with OSQP  
+// Eigen must be included before OpenCV eigen.hpp
+#include <Eigen/Dense>
+#include <opencv2/core/eigen.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+
 #include "cdcpd/cdcpd.h"
 
 #include <arc_utilities/enumerate.h>
@@ -13,13 +19,17 @@
 #include <fgt.hpp>
 #include <fstream>
 #include <iostream>
-#include <opencv2/core/eigen.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
 #include <sdf_tools/sdf.hpp>
 #include <string>
 
 #include "cdcpd/obs_util.h"
 
+
+// Implementation of operator<< for FixedPoint
+std::ostream &operator<<(std::ostream &out, FixedPoint const &p) {
+  out << "[" << p.template_index << "] " << p.position.transpose();
+  return out;
+}
 auto constexpr const LOGNAME = "cdcpd";
 
 using cv::Mat;
@@ -591,12 +601,12 @@ CDCPD::Output CDCPD::operator()(const Mat &rgb, const Mat &depth, const Mat &mas
 
   RCLCPP_DEBUG_STREAM(rclcpp::get_logger("cdcpd"), "fixed points" << pred_fixed_points);
 
-  // NOTE: seems like this should be a function, not a class? is there state like the gurobi env?
+  // NOTE: Optimizer is now a simple function object for OSQP optimization
   // ???: most likely not 1.0
-  // Optimizer opt(original_template, Y, start_lambda, obstacle_cost_weight);  // Disabled - requires GUROBI
+  Optimizer opt(original_template, Y, start_lambda, obstacle_cost_weight);  // Re-enabled with OSQP
   // Use the obstacle_constraints parameter passed in
-  // Matrix3Xf Y_opt = opt(TY, template_edges, pred_fixed_points, obstacle_constraints, max_segment_length);
-  Matrix3Xf Y_opt = TY;  // Temporary fallback - skip optimization
+  Matrix3Xf Y_opt = opt(TY, template_edges, pred_fixed_points, obstacle_constraints, max_segment_length);
+  // Matrix3Xf Y_opt = TY;  // Fallback disabled - using OSQP optimization
 
   // NOTE: set stateful member variables for next time
   last_lower_bounding_box = Y_opt.rowwise().minCoeff();

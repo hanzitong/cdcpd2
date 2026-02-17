@@ -34,7 +34,7 @@
 #include <CGAL/AABB_tree.h>
 #include <CGAL/AABB_traits.h>
 
-// #include "cdcpd/optimizer.h"  // Temporarily disabled - requires GUROBI
+#include "cdcpd/optimizer.h"  // Re-enabled with OSQP
 
 // #ifndef COMP
 // #define COMP
@@ -77,26 +77,15 @@ Eigen::MatrixXf barycenter_kneighbors_graph(const pcl::KdTreeFLANN<pcl::PointXYZ
                                             double reg);
 
 Eigen::MatrixXf locally_linear_embedding(PointCloud::ConstPtr template_cloud,
-                                         int lle_neighbors,
-                                         double reg);
+                                        int lle_neighbors,
+                                        double reg);
 
-struct FixedPoint {
-  Eigen::Vector3f position;
-  int template_index;
-};
-
-struct ObstacleConstraint {
-  unsigned int point_idx;
-  Eigen::Vector3f point;
-  Eigen::Vector3f normal;
-};
+// Forward declarations from optimizer.h
+struct FixedPoint;
+struct ObstacleConstraint;
 using ObstacleConstraints = std::vector<ObstacleConstraint>;
 
-static std::ostream &operator<<(std::ostream &out, FixedPoint const &p)
-{
-  out << "[" << p.template_index << "] " << p.position;
-  return out;
-}
+std::ostream &operator<<(std::ostream &out, FixedPoint const &p);
 
 class CDCPD
 {
@@ -108,7 +97,7 @@ class CDCPD
     PointCloud::Ptr downsampled_cloud;
     PointCloud::Ptr cpd_output;
     PointCloud::Ptr cpd_predict;
-    PointCloud::Ptr gurobi_output;
+    PointCloud::Ptr optimized_output;  // Renamed from gurobi_output for clarity
   };
 
   CDCPD(PointCloud::ConstPtr template_cloud,
