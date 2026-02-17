@@ -8,10 +8,15 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <arc_utilities/ostream_operators.hpp>
+#include <sdf_tools/sdf.hpp>
 
+#ifdef USE_SMMAP
 #include <smmap_models/constraint_jacobian_model.h>
 #include <smmap_models/diminishing_rigidity_model.h>
 #include <smmap_utilities/grippers.h>
+#else
+#include "cdcpd/smmap_stubs.h"
+#endif
 
 #include "cdcpd/past_template_matcher.h"
 #include "cdcpd/obs_util.h"
@@ -29,7 +34,7 @@
 #include <CGAL/AABB_tree.h>
 #include <CGAL/AABB_traits.h>
 
-#include "cdcpd/optimizer.h"
+// #include "cdcpd/optimizer.h"  // Temporarily disabled - requires GUROBI
 
 // #ifndef COMP
 // #define COMP
@@ -74,6 +79,18 @@ Eigen::MatrixXf barycenter_kneighbors_graph(const pcl::KdTreeFLANN<pcl::PointXYZ
 Eigen::MatrixXf locally_linear_embedding(PointCloud::ConstPtr template_cloud,
                                          int lle_neighbors,
                                          double reg);
+
+struct FixedPoint {
+  Eigen::Vector3f position;
+  int template_index;
+};
+
+struct ObstacleConstraint {
+  unsigned int point_idx;
+  Eigen::Vector3f point;
+  Eigen::Vector3f normal;
+};
+using ObstacleConstraints = std::vector<ObstacleConstraint>;
 
 static std::ostream &operator<<(std::ostream &out, FixedPoint const &p)
 {
@@ -170,8 +187,10 @@ class CDCPD
 
   rclcpp::Node::SharedPtr node;
 
+#ifdef USE_SMMAP
   std::unique_ptr<smmap::ConstraintJacobianModel> constraint_jacobian_model;
   std::unique_ptr<smmap::DiminishingRigidityModel> diminishing_rigidity_model;
+#endif
 
   // PastTemplateMatcher template_matcher;
   Eigen::Matrix3Xf original_template;

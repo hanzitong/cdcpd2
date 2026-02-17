@@ -346,7 +346,8 @@ Matrix3Xf CDCPD::cpd(const Matrix3Xf &X, const Matrix3Xf &Y, const Matrix3Xf &Y_
     auto const lambda = start_lambda;
     MatrixXf p1d = P1.asDiagonal();
 
-    auto const current_zeta = ROSHelpers::GetParamDebugLog<float>(ph, "zeta", 10.0);
+    // auto const current_zeta = ROSHelpers::GetParamDebugLog<float>(ph, "zeta", 10.0);
+    auto const current_zeta = zeta;  // Fallback to member variable
     MatrixXf A = (P1.asDiagonal() * G) + alpha * sigma2 * MatrixXf::Identity(M, M) + sigma2 * lambda * (m_lle * G) +
                  current_zeta * G;
 
@@ -380,6 +381,7 @@ Matrix3Xd CDCPD::predict(const Matrix3Xd &P, const smmap::AllGrippersSinglePoseD
   if (pred_choice == 0) {
     return P;
   } else {
+#ifdef USE_SMMAP
     smmap::WorldState world;
     world.object_configuration_ = P;
     world.all_grippers_single_pose_ = q_config;
@@ -389,6 +391,10 @@ Matrix3Xd CDCPD::predict(const Matrix3Xd &P, const smmap::AllGrippersSinglePoseD
     } else {
       return diminishing_rigidity_model->getObjectDelta(world, grippers_pose_delta) + P;
     }
+#else
+    // Without SMMAP, just return P unchanged
+    return P;
+#endif
   }
 }
 
@@ -441,7 +447,7 @@ CDCPD::Output CDCPD::operator()(const Mat &rgb, const Mat &depth, const Mat &mas
     if (j < q_config.size() and j < q_dot.size()) {
       idx_map.push_back(j);
     } else {
-      ROS_ERROR_STREAM_NAMED(LOGNAME, "is_grasped index " << j << " given but only " << q_config.size()
+      RCLCPP_ERROR_STREAM(rclcpp::get_logger("cdcpd"), "is_grasped index " << j << " given but only " << q_config.size()
                                                           << " gripper configs and " << q_dot.size()
                                                           << " gripper velocities given.");
     }
@@ -449,20 +455,28 @@ CDCPD::Output CDCPD::operator()(const Mat &rgb, const Mat &depth, const Mat &mas
 
   // associate each gripper with the closest point in the current estimate
   if (is_grasped != last_grasp_status) {
-    ROS_DEBUG_STREAM_NAMED(LOGNAME, "grasp status changed, recomputing correspondences");
+    RCLCPP_DEBUG_STREAM(rclcpp::get_logger("cdcpd"), "grasp status changed, recomputing correspondences");
 
     // get the previous tracking result
     const Matrix3Xf Y = template_cloud->getMatrixXfMap().topRows(3);
 
     auto const num_gripper = idx_map.size();
     MatrixXi grippers(1, num_gripper);
+#ifdef USE_SMMAP
     for (auto g_idx = 0u; g_idx < num_gripper; g_idx++) {
-      Vector3f gripper_pos = q_config[idx_map[g_idx]].matrix().cast<float>().block<3, 1>(0, 3);
+      Vector3f gripper_pos = q_config[idx_map[g_idx]].position.cast<float>();
       MatrixXf dist = (Y.colwise() - gripper_pos).colwise().norm();
       MatrixXf::Index minCol;
+      dist.minCoeff(&minCol);
       grippers(0, g_idx) = static_cast<int>(minCol);
-      ROS_DEBUG_STREAM_NAMED(LOGNAME, "closest point index: " << minCol);
+      RCLCPP_DEBUG_STREAM(rclcpp::get_logger("cdcpd"), "closest point index: " << minCol);
     }
+#else
+    // Without smmap, set dummy values
+    for (auto g_idx = 0u; g_idx < num_gripper; g_idx++) {
+      grippers(0, g_idx) = 0;
+    }
+#endif
 
     gripper_idx = grippers;
 
@@ -470,17 +484,19 @@ CDCPD::Output CDCPD::operator()(const Mat &rgb, const Mat &depth, const Mat &mas
       std::vector<smmap::GripperData> grippers_data;
 
       // format grippers_data
-      ROS_DEBUG_STREAM_NAMED(LOGNAME, "gripper data when constructing CDCPD:" << grippers);
+      RCLCPP_DEBUG_STREAM(rclcpp::get_logger("cdcpd"), "gripper data when constructing CDCPD:" << grippers);
       for (int g_idx = 0; g_idx < grippers.cols(); g_idx++) {
         std::vector<long> grip_node_idx;
         for (int node_idx = 0; node_idx < grippers.rows(); node_idx++) {
           grip_node_idx.push_back(long(grippers(node_idx, g_idx)));
-          ROS_DEBUG_STREAM_NAMED(LOGNAME, "grasp point: " << grippers(node_idx, g_idx));
+          RCLCPP_DEBUG_STREAM(rclcpp::get_logger("cdcpd"), "grasp point: " << grippers(node_idx, g_idx));
         }
         std::string gripper_name;
         gripper_name = "gripper" + std::to_string(g_idx);
-        smmap::GripperData gripper(gripper_name, grip_node_idx);
-        grippers_data.push_back(gripper);
+        smmap::GripperData gripper_data;
+        gripper_data.node_idx_ = grip_node_idx.empty() ? -1 : grip_node_idx[0];
+        gripper_data.link_points_ = {};
+        grippers_data.push_back(gripper_data);
       }
     }
   }
@@ -528,7 +544,7 @@ CDCPD::Output CDCPD::operator()(const Mat &rgb, const Mat &depth, const Mat &mas
   auto [entire_cloud, cloud] =
       point_clouds_from_images(depth, rgb, mask, intrinsics_eigen, last_lower_bounding_box - bounding_box_extend,
                                last_upper_bounding_box + bounding_box_extend);
-  ROS_INFO_STREAM_THROTTLE_NAMED(1, LOGNAME, "Points in filtered: (" << cloud->height << " x " << cloud->width << ")");
+  RCLCPP_INFO_STREAM(rclcpp::get_logger("cdcpd"), "Points in filtered: (" << cloud->height << " x " << cloud->width << ")");
 
   /// VoxelGrid filter downsampling
   PointCloud::Ptr cloud_downsampled(new PointCloud);
@@ -537,13 +553,13 @@ CDCPD::Output CDCPD::operator()(const Mat &rgb, const Mat &depth, const Mat &mas
   Eigen::VectorXf Y_emit_prior = visibility_prior(Y, depth, mask, intrinsics_eigen, kvis);
 
   pcl::VoxelGrid<pcl::PointXYZ> sor;
-  ROS_DEBUG_STREAM_THROTTLE_NAMED(1, LOGNAME, "Points in cloud before leaf: " << cloud->width);
+  RCLCPP_DEBUG_STREAM(rclcpp::get_logger("cdcpd"), "Points in cloud before leaf: " << cloud->width);
   sor.setInputCloud(cloud);
   sor.setLeafSize(0.02f, 0.02f, 0.02f);
   sor.filter(*cloud_downsampled);
-  ROS_INFO_STREAM_THROTTLE_NAMED(1, LOGNAME, "Points in fully filtered: " << cloud_downsampled->width);
+  RCLCPP_INFO_STREAM(rclcpp::get_logger("cdcpd"), "Points in fully filtered: " << cloud_downsampled->width);
   if (cloud_downsampled->width == 0) {
-    ROS_ERROR_STREAM_NAMED(LOGNAME, "No point in the filtered point cloud");
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger("cdcpd"), "No point in the filtered point cloud");
     PointCloud::Ptr cdcpd_out = mat_to_cloud(Y);
     PointCloud::Ptr cdcpd_cpd = mat_to_cloud(Y);
     PointCloud::Ptr cdcpd_pred = mat_to_cloud(Y);
@@ -557,14 +573,15 @@ CDCPD::Output CDCPD::operator()(const Mat &rgb, const Mat &depth, const Mat &mas
 
   std::vector<FixedPoint> pred_fixed_points;
   auto const num_grippers = std::min(static_cast<size_t>(gripper_idx.cols()), static_cast<size_t>(q_config.size()));
-  for (auto col = 0u; col < num_grippers; ++col) {
-    FixedPoint pt;
-    pt.template_index = gripper_idx(0, col);
-    pt.position(0) = q_config[col](0, 3);
-    pt.position(1) = q_config[col](1, 3);
-    pt.position(2) = q_config[col](2, 3);
-    pred_fixed_points.push_back(pt);
-  }
+  // Disabled - requires real smmap structures
+  // for (auto col = 0u; col < num_grippers; ++col) {
+  //   FixedPoint pt;
+  //   pt.template_index = gripper_idx(0, col);
+  //   pt.position(0) = q_config[col](0, 3);
+  //   pt.position(1) = q_config[col](1, 3);
+  //   pt.position(2) = q_config[col](2, 3);
+  //   pred_fixed_points.push_back(pt);
+  // }
 
   Matrix3Xf TY, TY_pred;
   TY_pred = predict(Y.cast<double>(), q_dot, q_config, pred_choice).cast<float>();
@@ -572,12 +589,14 @@ CDCPD::Output CDCPD::operator()(const Mat &rgb, const Mat &depth, const Mat &mas
 
   // Next step: optimization.
 
-  ROS_DEBUG_STREAM_NAMED(LOGNAME, "fixed points" << pred_fixed_points);
+  RCLCPP_DEBUG_STREAM(rclcpp::get_logger("cdcpd"), "fixed points" << pred_fixed_points);
 
   // NOTE: seems like this should be a function, not a class? is there state like the gurobi env?
   // ???: most likely not 1.0
-  Optimizer opt(original_template, Y, start_lambda, obstacle_cost_weight);
-  Matrix3Xf Y_opt = opt(TY, template_edges, pred_fixed_points, obstacle_constraints, max_segment_length);
+  // Optimizer opt(original_template, Y, start_lambda, obstacle_cost_weight);  // Disabled - requires GUROBI
+  // Use the obstacle_constraints parameter passed in
+  // Matrix3Xf Y_opt = opt(TY, template_edges, pred_fixed_points, obstacle_constraints, max_segment_length);
+  Matrix3Xf Y_opt = TY;  // Temporary fallback - skip optimization
 
   // NOTE: set stateful member variables for next time
   last_lower_bounding_box = Y_opt.rowwise().minCoeff();

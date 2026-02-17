@@ -2,7 +2,7 @@
 #include <cdcpd/cdcpd.h>
 #include <geometric_shapes/shapes.h>
 #include <geometry_msgs/msg/transform_stamped.hpp>
-#include <jsk_recognition_msgs/msg/bounding_box.hpp>
+#// #include <jsk_recognition_msgs/msg/bounding_box.hpp>
 #include <moveit/collision_detection/collision_common.h>
 #include <moveit/collision_detection/collision_tools.h>
 #include <moveit/planning_scene_monitor/planning_scene_monitor.h>
@@ -200,12 +200,12 @@ int main(int argc, char* argv[]) {
   ObstacleConstraints obstacle_constraints; // currently void
 
   // initialize publisher
-  auto original_publisher = node->create_publisher<PointCloud>("cdcpd/original", 10);
-  auto masked_publisher = node->create_publisher<PointCloud>("cdcpd/masked", 10);
-  auto downsampled_publisher = node->create_publisher<PointCloud>("cdcpd/downsampled", 10);
-  auto template_publisher = node->create_publisher<PointCloud>("cdcpd/template", 10);
-  auto pre_template_publisher = node->create_publisher<PointCloud>("cdcpd/pre_template", 10);
-  auto output_publisher = node->create_publisher<PointCloud>("cdcpd/output", 10);
+  auto original_publisher = node->create_publisher<sensor_msgs::msg::PointCloud2>("cdcpd/original", 10);
+  auto masked_publisher = node->create_publisher<sensor_msgs::msg::PointCloud2>("cdcpd/masked", 10);
+  auto downsampled_publisher = node->create_publisher<sensor_msgs::msg::PointCloud2>("cdcpd/downsampled", 10);
+  auto template_publisher = node->create_publisher<sensor_msgs::msg::PointCloud2>("cdcpd/template", 10);
+  auto pre_template_publisher = node->create_publisher<sensor_msgs::msg::PointCloud2>("cdcpd/pre_template", 10);
+  auto output_publisher = node->create_publisher<sensor_msgs::msg::PointCloud2>("cdcpd/output", 10);
   auto order_pub = node->create_publisher<vm::Marker>("cdcpd/order", 10);
 
   for (int i = 0; i < frame_num; i++) {
@@ -223,7 +223,7 @@ int main(int argc, char* argv[]) {
     // current no motion model
     smmap::AllGrippersSinglePose q_config;
     auto const n_grippers = q_config.size();
-    const smmap::AllGrippersSinglePoseDelta q_dot{n_grippers, kinematics::Vector6d::Zero()};
+    smmap::AllGrippersSinglePoseDelta q_dot; // Empty for now
     Eigen::MatrixXi gripper_idx(1,2);
     gripper_idx << 0, 0;
 
@@ -245,20 +245,37 @@ int main(int argc, char* argv[]) {
     {
       auto time = node->now();
       auto pcl_time = pcl_conversions::toPCL(time);
-      out.original_cloud->header.stamp = pcl_time.stamp;
-      out.masked_point_cloud->header.stamp = pcl_time.stamp;
-      out.downsampled_cloud->header.stamp = pcl_time.stamp;
-      out.cpd_output->header.stamp = pcl_time.stamp;
-      out.gurobi_output->header.stamp = pcl_time.stamp;
+      out.original_cloud->header.stamp = pcl_time;
+      out.masked_point_cloud->header.stamp = pcl_time;
+      out.downsampled_cloud->header.stamp = pcl_time;
+      out.cpd_output->header.stamp = pcl_time;
+      out.gurobi_output->header.stamp = pcl_time;
     }
 
     // Publish the point clouds
     {
-      original_publisher->publish(*out.original_cloud);
-      masked_publisher->publish(*out.masked_point_cloud);
-      downsampled_publisher->publish(*out.downsampled_cloud);
-      template_publisher->publish(*out.cpd_output);
-      output_publisher->publish(*out.gurobi_output);
+      sensor_msgs::msg::PointCloud2 msg;
+      std::string frame_id = "kinect2_rgb_optical_frame";  // Default frame
+      
+      pcl::toROSMsg(*out.original_cloud, msg);
+      msg.header.frame_id = frame_id;
+      original_publisher->publish(msg);
+      
+      pcl::toROSMsg(*out.masked_point_cloud, msg);
+      msg.header.frame_id = frame_id;
+      masked_publisher->publish(msg);
+      
+      pcl::toROSMsg(*out.downsampled_cloud, msg);
+      msg.header.frame_id = frame_id;
+      downsampled_publisher->publish(msg);
+      
+      pcl::toROSMsg(*out.cpd_output, msg);
+      msg.header.frame_id = frame_id;
+      template_publisher->publish(msg);
+      
+      pcl::toROSMsg(*out.gurobi_output, msg);
+      msg.header.frame_id = frame_id;
+      output_publisher->publish(msg);
     }
     
     // Process ROS callbacks to allow publishing

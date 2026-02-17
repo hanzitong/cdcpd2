@@ -7,11 +7,11 @@
 #include <stdexcept>
 #include <Eigen/Geometry>
 #include <unsupported/Eigen/AutoDiff>
-#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/msg/marker.hpp>
 #include <arc_utilities/serialization.hpp>
 #include <arc_utilities/voxel_grid.hpp>
 #include <arc_utilities/pretty_print.hpp>
-#include <sdf_tools/SDF.h>
+#include <sdf_tools/msg/sdf.hpp>
 
 namespace sdf_tools
 {
@@ -1168,11 +1168,11 @@ public:
       // ensure that the resulting value is inside the valid region even
       // after rotating back to the world frame
       const double dist_margin = minimum_distance + GetResolution() * 1e-4;
-      const double x = arc_helpers::ClampValue(
+      const double x = arm_helpers::ClampValue(
                   grid_frame_location(0), dist_margin, x_size_ - dist_margin);
-      const double y = arc_helpers::ClampValue(
+      const double y = arm_helpers::ClampValue(
                   grid_frame_location(1), dist_margin, y_size_ - dist_margin);
-      const double z = arc_helpers::ClampValue(
+      const double z = arm_helpers::ClampValue(
                   grid_frame_location(2), dist_margin, z_size_ - dist_margin);
       // To avoid numerical problems, only return a modified
       // location if we actually had to change something
@@ -1225,13 +1225,13 @@ public:
       std::vector<uint8_t>& buffer,
       const std::function<uint64_t(
         const float&, std::vector<uint8_t>&)>& value_serializer
-      = arc_utilities::SerializeFixedSizePOD<float>) const;
+      = arm_utilities::SerializeFixedSizePOD<float>) const;
 
   virtual uint64_t DeserializeSelf(
       const std::vector<uint8_t>& buffer, const uint64_t current,
       const std::function<std::pair<float, uint64_t>(
         const std::vector<uint8_t>&, const uint64_t)>& value_deserializer
-      = arc_utilities::DeserializeFixedSizePOD<float>);
+      = arm_utilities::DeserializeFixedSizePOD<float>);
 
   static void SaveToFile(const SignedDistanceField& sdf,
                          const std::string& filepath,
@@ -1239,15 +1239,15 @@ public:
 
   static SignedDistanceField LoadFromFile(const std::string& filepath);
 
-  static sdf_tools::SDF GetMessageRepresentation(
+  static sdf_tools::msg::SDF GetMessageRepresentation(
       const SignedDistanceField& sdf);
 
   static SignedDistanceField LoadFromMessageRepresentation(
-      const sdf_tools::SDF& message);
+      const sdf_tools::msg::SDF& message);
 
-  visualization_msgs::Marker ExportForDisplay(const float alpha = 0.01f) const;
+  visualization_msgs::msg::Marker ExportForDisplay(const float alpha = 0.01f) const;
 
-  visualization_msgs::Marker ExportForDisplayCollisionOnly(
+  visualization_msgs::msg::Marker ExportForDisplayCollisionOnly(
       const float alpha = 0.01f) const;
 };
 }

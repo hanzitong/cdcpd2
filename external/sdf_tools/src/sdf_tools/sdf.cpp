@@ -7,12 +7,12 @@
 #include <fstream>
 #include <stdexcept>
 #include <unordered_map>
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 #include <arc_utilities/eigen_helpers_conversions.hpp>
 #include <arc_utilities/serialization_eigen.hpp>
 #include <arc_utilities/zlib_helpers.hpp>
 #include <sdf_tools/sdf.hpp>
-#include <sdf_tools/SDF.h>
+#include <sdf_tools/msg/sdf.hpp>
 
 using namespace sdf_tools;
 
@@ -218,38 +218,38 @@ uint64_t SignedDistanceField::SerializeSelf(
   UNUSED(value_serializer);
   const uint64_t start_buffer_size = buffer.size();
   // Serialize the initialized
-  arc_utilities::SerializeFixedSizePOD<uint8_t>((uint8_t)initialized_, buffer);
+  arm_utilities::SerializeFixedSizePOD<uint8_t>((uint8_t)initialized_, buffer);
   // Serialize the transforms
-  arc_utilities::SerializeEigen<Eigen::Isometry3d>(origin_transform_, buffer);
-  arc_utilities::SerializeEigen<Eigen::Isometry3d>(inverse_origin_transform_,
+  arm_utilities::SerializeEigen<Eigen::Isometry3d>(origin_transform_, buffer);
+  arm_utilities::SerializeEigen<Eigen::Isometry3d>(inverse_origin_transform_,
                                              buffer);
   // Serialize the data
-  arc_utilities::SerializeVector<float>(
-        data_, buffer, arc_utilities::SerializeFixedSizePOD<float>);
+  arm_utilities::SerializeVector<float>(
+        data_, buffer, arm_utilities::SerializeFixedSizePOD<float>);
   // Serialize the cell sizes
-  arc_utilities::SerializeFixedSizePOD<double>(cell_x_size_, buffer);
-  arc_utilities::SerializeFixedSizePOD<double>(cell_y_size_, buffer);
-  arc_utilities::SerializeFixedSizePOD<double>(cell_z_size_, buffer);
-  arc_utilities::SerializeFixedSizePOD<double>(inv_cell_x_size_, buffer);
-  arc_utilities::SerializeFixedSizePOD<double>(inv_cell_y_size_, buffer);
-  arc_utilities::SerializeFixedSizePOD<double>(inv_cell_z_size_, buffer);
+  arm_utilities::SerializeFixedSizePOD<double>(cell_x_size_, buffer);
+  arm_utilities::SerializeFixedSizePOD<double>(cell_y_size_, buffer);
+  arm_utilities::SerializeFixedSizePOD<double>(cell_z_size_, buffer);
+  arm_utilities::SerializeFixedSizePOD<double>(inv_cell_x_size_, buffer);
+  arm_utilities::SerializeFixedSizePOD<double>(inv_cell_y_size_, buffer);
+  arm_utilities::SerializeFixedSizePOD<double>(inv_cell_z_size_, buffer);
   // Serialize the grid sizes
-  arc_utilities::SerializeFixedSizePOD<double>(x_size_, buffer);
-  arc_utilities::SerializeFixedSizePOD<double>(y_size_, buffer);
-  arc_utilities::SerializeFixedSizePOD<double>(z_size_, buffer);
+  arm_utilities::SerializeFixedSizePOD<double>(x_size_, buffer);
+  arm_utilities::SerializeFixedSizePOD<double>(y_size_, buffer);
+  arm_utilities::SerializeFixedSizePOD<double>(z_size_, buffer);
   // Serialize the control/bounds values
-  arc_utilities::SerializeFixedSizePOD<int64_t>(stride1_, buffer);
-  arc_utilities::SerializeFixedSizePOD<int64_t>(stride2_, buffer);
-  arc_utilities::SerializeFixedSizePOD<int64_t>(num_x_cells_, buffer);
-  arc_utilities::SerializeFixedSizePOD<int64_t>(num_y_cells_, buffer);
-  arc_utilities::SerializeFixedSizePOD<int64_t>(num_z_cells_, buffer);
+  arm_utilities::SerializeFixedSizePOD<int64_t>(stride1_, buffer);
+  arm_utilities::SerializeFixedSizePOD<int64_t>(stride2_, buffer);
+  arm_utilities::SerializeFixedSizePOD<int64_t>(num_x_cells_, buffer);
+  arm_utilities::SerializeFixedSizePOD<int64_t>(num_y_cells_, buffer);
+  arm_utilities::SerializeFixedSizePOD<int64_t>(num_z_cells_, buffer);
   // Serialize the default value
-  arc_utilities::SerializeFixedSizePOD<float>(default_value_, buffer);
+  arm_utilities::SerializeFixedSizePOD<float>(default_value_, buffer);
   // Serialize the OOB value
-  arc_utilities::SerializeFixedSizePOD<float>(oob_value_, buffer);
+  arm_utilities::SerializeFixedSizePOD<float>(oob_value_, buffer);
   // Serialize SDF stuff
-  arc_utilities::SerializeString(frame_, buffer);
-  arc_utilities::SerializeFixedSizePOD<uint8_t>((uint8_t)locked_,
+  arm_utilities::SerializeString(frame_, buffer);
+  arm_utilities::SerializeFixedSizePOD<uint8_t>((uint8_t)locked_,
                                               buffer);
   // Figure out how many bytes were written
   const uint64_t end_buffer_size = buffer.size();
@@ -266,121 +266,121 @@ uint64_t SignedDistanceField::DeserializeSelf(
   uint64_t current_position = current;
   // Deserialize the initialized
   const std::pair<uint8_t, uint64_t> initialized_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<uint8_t>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<uint8_t>(buffer,
                                                         current_position);
   initialized_ = (bool)initialized_deserialized.first;
   current_position += initialized_deserialized.second;
   // Deserialize the transforms
   const std::pair<Eigen::Isometry3d, uint64_t> origin_transform_deserialized
-      = arc_utilities::DeserializeEigen<Eigen::Isometry3d>(buffer,
+      = arm_utilities::DeserializeEigen<Eigen::Isometry3d>(buffer,
                                                            current_position);
   origin_transform_ = origin_transform_deserialized.first;
   current_position += origin_transform_deserialized.second;
   const std::pair<Eigen::Isometry3d, uint64_t>
       inverse_origin_transform_deserialized
-      = arc_utilities::DeserializeEigen<Eigen::Isometry3d>(buffer,
+      = arm_utilities::DeserializeEigen<Eigen::Isometry3d>(buffer,
                                                            current_position);
   inverse_origin_transform_ = inverse_origin_transform_deserialized.first;
   current_position += inverse_origin_transform_deserialized.second;
   // Deserialize the data
   const std::pair<std::vector<float>, uint64_t> data_deserialized
-      = arc_utilities::DeserializeVector<float>(
+      = arm_utilities::DeserializeVector<float>(
         buffer, current_position,
-        arc_utilities::DeserializeFixedSizePOD<float>);
+        arm_utilities::DeserializeFixedSizePOD<float>);
   data_ = data_deserialized.first;
   current_position += data_deserialized.second;
   // Deserialize the cell sizes
   const std::pair<double, uint64_t> cell_x_size_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<double>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<double>(buffer,
                                                        current_position);
   cell_x_size_ = cell_x_size_deserialized.first;
   current_position += cell_x_size_deserialized.second;
   const std::pair<double, uint64_t> cell_y_size_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<double>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<double>(buffer,
                                                        current_position);
   cell_y_size_ = cell_y_size_deserialized.first;
   current_position += cell_y_size_deserialized.second;
   const std::pair<double, uint64_t> cell_z_size_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<double>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<double>(buffer,
                                                        current_position);
   cell_z_size_ = cell_z_size_deserialized.first;
   current_position += cell_z_size_deserialized.second;
   const std::pair<double, uint64_t> inv_cell_x_size_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<double>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<double>(buffer,
                                                        current_position);
   inv_cell_x_size_ = inv_cell_x_size_deserialized.first;
   current_position += inv_cell_x_size_deserialized.second;
   const std::pair<double, uint64_t> inv_cell_y_size_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<double>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<double>(buffer,
                                                        current_position);
   inv_cell_y_size_ = inv_cell_y_size_deserialized.first;
   current_position += inv_cell_y_size_deserialized.second;
   const std::pair<double, uint64_t> inv_cell_z_size_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<double>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<double>(buffer,
                                                        current_position);
   inv_cell_z_size_ = inv_cell_z_size_deserialized.first;
   current_position += inv_cell_z_size_deserialized.second;
   // Deserialize the grid sizes
   const std::pair<double, uint64_t> x_size_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<double>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<double>(buffer,
                                                        current_position);
   x_size_ = x_size_deserialized.first;
   current_position += x_size_deserialized.second;
   const std::pair<double, uint64_t> y_size_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<double>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<double>(buffer,
                                                        current_position);
   y_size_ = y_size_deserialized.first;
   current_position += y_size_deserialized.second;
   const std::pair<double, uint64_t> z_size_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<double>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<double>(buffer,
                                                        current_position);
   z_size_ = z_size_deserialized.first;
   current_position += z_size_deserialized.second;
   // Deserialize the control/bounds values
   const std::pair<int64_t, uint64_t> stride1_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<int64_t>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<int64_t>(buffer,
                                                         current_position);
   stride1_ = stride1_deserialized.first;
   current_position += stride1_deserialized.second;
   const std::pair<int64_t, uint64_t> stride2_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<int64_t>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<int64_t>(buffer,
                                                         current_position);
   stride2_ = stride2_deserialized.first;
   current_position += stride2_deserialized.second;
   const std::pair<int64_t, uint64_t> num_x_cells_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<int64_t>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<int64_t>(buffer,
                                                         current_position);
   num_x_cells_ = num_x_cells_deserialized.first;
   current_position += num_x_cells_deserialized.second;
   const std::pair<int64_t, uint64_t> num_y_cells_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<int64_t>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<int64_t>(buffer,
                                                         current_position);
   num_y_cells_ = num_y_cells_deserialized.first;
   current_position += num_y_cells_deserialized.second;
   const std::pair<int64_t, uint64_t> num_z_cells_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<int64_t>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<int64_t>(buffer,
                                                         current_position);
   num_z_cells_ = num_z_cells_deserialized.first;
   current_position += num_z_cells_deserialized.second;
   // Deserialize the default value
   const std::pair<float, uint64_t> default_value_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<float>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<float>(buffer,
                                                       current_position);
   default_value_ = default_value_deserialized.first;
   current_position += default_value_deserialized.second;
   // Deserialize the OOB value
   const std::pair<float, uint64_t> oob_value_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<float>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<float>(buffer,
                                                       current_position);
   oob_value_ = oob_value_deserialized.first;
   current_position += oob_value_deserialized.second;
   // Deserialize SDF stuff
   const std::pair<std::string, uint64_t> frame_deserialized
-      = arc_utilities::DeserializeString<char>(buffer, current_position);
+      = arm_utilities::DeserializeString<char>(buffer, current_position);
   frame_ = frame_deserialized.first;
   current_position += frame_deserialized.second;
   const std::pair<uint8_t, uint64_t> locked_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<uint8_t>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<uint8_t>(buffer,
                                                         current_position);
   locked_ = (bool)locked_deserialized.first;
   current_position += locked_deserialized.second;
@@ -469,11 +469,11 @@ SignedDistanceField SignedDistanceField::LoadFromFile(
   }
 }
 
-sdf_tools::SDF SignedDistanceField::GetMessageRepresentation(
+sdf_tools::msg::SDF SignedDistanceField::GetMessageRepresentation(
     const SignedDistanceField& sdf)
 {
-  sdf_tools::SDF sdf_message;
-  sdf_message.header.stamp = ros::Time::now();
+  sdf_tools::msg::SDF sdf_message;
+  sdf_message.header.stamp = rclcpp::Clock().now();
   sdf_message.header.frame_id = sdf.GetFrame();
   std::vector<uint8_t> buffer;
   sdf.SerializeSelf(buffer);
@@ -483,7 +483,7 @@ sdf_tools::SDF SignedDistanceField::GetMessageRepresentation(
 }
 
 SignedDistanceField SignedDistanceField::LoadFromMessageRepresentation(
-    const sdf_tools::SDF& message)
+    const sdf_tools::msg::SDF& message)
 {
   if (message.is_compressed)
   {
@@ -501,18 +501,18 @@ SignedDistanceField SignedDistanceField::LoadFromMessageRepresentation(
   }
 }
 
-visualization_msgs::Marker SignedDistanceField::ExportForDisplay(
+visualization_msgs::msg::Marker SignedDistanceField::ExportForDisplay(
     const float alpha) const
 {
-  visualization_msgs::Marker display_rep;
+  visualization_msgs::msg::Marker display_rep;
   // Populate the header
   display_rep.header.frame_id = frame_;
   // Populate the options
   display_rep.ns = "sdf_display";
   display_rep.id = 1;
-  display_rep.type = visualization_msgs::Marker::CUBE_LIST;
-  display_rep.action = visualization_msgs::Marker::ADD;
-  display_rep.lifetime = ros::Duration(0.0);
+  display_rep.type = visualization_msgs::msg::Marker::CUBE_LIST;
+  display_rep.action = visualization_msgs::msg::Marker::ADD;
+  display_rep.lifetime = rclcpp::Duration(0, 0);
   display_rep.frame_locked = false;
   display_rep.pose = EigenHelpersConversions::EigenIsometry3dToGeometryPose(
                        GetOriginTransform());
@@ -542,7 +542,7 @@ visualization_msgs::Marker SignedDistanceField::ExportForDisplay(
         // Convert SDF indices into a real-world location
         const Eigen::Vector4d location
             = GridIndexToLocationGridFrame(x_index, y_index, z_index);
-        geometry_msgs::Point new_point;
+        geometry_msgs::msg::Point new_point;
         new_point.x = location(0);
         new_point.y = location(1);
         new_point.z = location(2);
@@ -559,8 +559,8 @@ visualization_msgs::Marker SignedDistanceField::ExportForDisplay(
       {
         // Update minimum/maximum distance variables
         const float distance = GetImmutable(x_index, y_index, z_index).first;
-        std_msgs::ColorRGBA new_color;
-        new_color.a = arc_helpers::ClampValue(alpha, 0.0f, 1.0f);
+        std_msgs::msg::ColorRGBA new_color;
+        new_color.a = arm_helpers::ClampValue(alpha, 0.0f, 1.0f);
         if (distance > 0.0)
         {
           new_color.b = 0.0;
@@ -586,18 +586,18 @@ visualization_msgs::Marker SignedDistanceField::ExportForDisplay(
   return display_rep;
 }
 
-visualization_msgs::Marker SignedDistanceField::ExportForDisplayCollisionOnly(
+visualization_msgs::msg::Marker SignedDistanceField::ExportForDisplayCollisionOnly(
     const float alpha) const
 {
-  visualization_msgs::Marker display_rep;
+  visualization_msgs::msg::Marker display_rep;
   // Populate the header
   display_rep.header.frame_id = frame_;
   // Populate the options
   display_rep.ns = "sdf_display";
   display_rep.id = 1;
-  display_rep.type = visualization_msgs::Marker::CUBE_LIST;
-  display_rep.action = visualization_msgs::Marker::ADD;
-  display_rep.lifetime = ros::Duration(0.0);
+  display_rep.type = visualization_msgs::msg::Marker::CUBE_LIST;
+  display_rep.action = visualization_msgs::msg::Marker::ADD;
+  display_rep.lifetime = rclcpp::Duration(0, 0);
   display_rep.frame_locked = false;
   display_rep.pose = EigenHelpersConversions::EigenIsometry3dToGeometryPose(
                        GetOriginTransform());
@@ -605,7 +605,7 @@ visualization_msgs::Marker SignedDistanceField::ExportForDisplayCollisionOnly(
   display_rep.scale.y = GetResolution();
   display_rep.scale.z = GetResolution();
   // Color it
-  std_msgs::ColorRGBA collision_color;
+  std_msgs::msg::ColorRGBA collision_color;
   collision_color.a = alpha;
   collision_color.b = 0.0;
   collision_color.g = 0.0;
@@ -626,7 +626,7 @@ visualization_msgs::Marker SignedDistanceField::ExportForDisplayCollisionOnly(
                   // Convert SDF indices into a real-world location
                   const Eigen::Vector4d location
                       = GridIndexToLocationGridFrame(x_index, y_index, z_index);
-                  geometry_msgs::Point new_point;
+                  geometry_msgs::msg::Point new_point;
                   new_point.x = location(0);
                   new_point.y = location(1);
                   new_point.z = location(2);

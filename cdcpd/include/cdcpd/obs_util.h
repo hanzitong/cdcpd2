@@ -18,7 +18,7 @@
 #include <CGAL/AABB_traits.h>
 #include <CGAL/AABB_tree.h>
 
-#include <shape_msgs/Mesh.h>
+#include <shape_msgs/msg/mesh.hpp>
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 typedef K::FT FT;
@@ -31,6 +31,6 @@ typedef boost::graph_traits<Mesh>::face_descriptor face_descriptor;
 typedef CGAL::AABB_face_graph_triangle_primitive<Mesh> AABB_face_graph_primitive;
 typedef CGAL::AABB_traits<K, AABB_face_graph_primitive> AABB_face_graph_traits;
 
-Mesh shapes_mesh_to_cgal_mesh(shape_msgs::Mesh const &input_mesh);
+Mesh shapes_mesh_to_cgal_mesh(shape_msgs::msg::Mesh const &input_mesh);
 
 #endif

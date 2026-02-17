@@ -2,13 +2,13 @@
 #include <vector>
 #include <string>
 #include <Eigen/Geometry>
-#include <visualization_msgs/MarkerArray.h>
+#include <visualization_msgs/msg/marker_array.hpp>
 #include <arc_utilities/arc_helpers.hpp>
 #include <arc_utilities/serialization.hpp>
 #include <arc_utilities/voxel_grid.hpp>
 #include <sdf_tools/sdf.hpp>
 #include <sdf_tools/sdf_generation.hpp>
-#include <sdf_tools/CollisionMap.h>
+#include <sdf_tools/msg/collision_map.hpp>
 
 #ifndef COLLISION_MAP_HPP
 #define COLLISION_MAP_HPP
@@ -35,10 +35,10 @@ class CollisionMapGrid : public VoxelGrid::VoxelGrid<COLLISION_CELL>
 {
 protected:
 
-  inline static std_msgs::ColorRGBA GenerateComponentColor(
+  inline static std_msgs::msg::ColorRGBA GenerateComponentColor(
       const uint32_t component, const float alpha=1.0f)
   {
-      return arc_helpers::GenerateUniqueColor<std_msgs::ColorRGBA>(
+      return arm_helpers::GenerateUniqueColor<std_msgs::msg::ColorRGBA>(
             component, alpha);
   }
 
@@ -622,13 +622,13 @@ public:
       std::vector<uint8_t>& buffer,
       const std::function<uint64_t(
         const COLLISION_CELL&, std::vector<uint8_t>&)>& value_serializer
-      = arc_utilities::SerializeFixedSizePOD<COLLISION_CELL>) const;
+      = arm_utilities::SerializeFixedSizePOD<COLLISION_CELL>) const;
 
   virtual uint64_t DeserializeSelf(
       const std::vector<uint8_t>& buffer, const uint64_t current,
       const std::function<std::pair<COLLISION_CELL, uint64_t>(
         const std::vector<uint8_t>&, const uint64_t)>& value_deserializer
-      = arc_utilities::DeserializeFixedSizePOD<COLLISION_CELL>);
+      = arm_utilities::DeserializeFixedSizePOD<COLLISION_CELL>);
 
   static void SaveToFile(const CollisionMapGrid& map,
                          const std::string& filepath,
@@ -636,11 +636,11 @@ public:
 
   static CollisionMapGrid LoadFromFile(const std::string& filepath);
 
-  static sdf_tools::CollisionMap GetMessageRepresentation(
+  static sdf_tools::msg::CollisionMap GetMessageRepresentation(
       const CollisionMapGrid& map);
 
   static CollisionMapGrid LoadFromMessageRepresentation(
-      const sdf_tools::CollisionMap& message);
+      const sdf_tools::msg::CollisionMap& message);
 
   uint32_t UpdateConnectedComponents();
 
@@ -711,27 +711,27 @@ public:
           *this, is_filled_fn, oob_value, GetFrame(), add_virtual_border);
   }
 
-  visualization_msgs::Marker ExportForDisplay(
-      const std_msgs::ColorRGBA& collision_color,
-      const std_msgs::ColorRGBA& free_color,
-      const std_msgs::ColorRGBA& unknown_color) const;
+  visualization_msgs::msg::Marker ExportForDisplay(
+      const std_msgs::msg::ColorRGBA& collision_color,
+      const std_msgs::msg::ColorRGBA& free_color,
+      const std_msgs::msg::ColorRGBA& unknown_color) const;
 
-  visualization_msgs::MarkerArray ExportForSeparateDisplay(
-      const std_msgs::ColorRGBA& collision_color,
-      const std_msgs::ColorRGBA& free_color,
-      const std_msgs::ColorRGBA& unknown_color) const;
+  visualization_msgs::msg::MarkerArray ExportForSeparateDisplay(
+      const std_msgs::msg::ColorRGBA& collision_color,
+      const std_msgs::msg::ColorRGBA& free_color,
+      const std_msgs::msg::ColorRGBA& unknown_color) const;
 
-  visualization_msgs::Marker ExportSurfacesForDisplay(
-      const std_msgs::ColorRGBA& collision_color,
-      const std_msgs::ColorRGBA& free_color,
-      const std_msgs::ColorRGBA& unknown_color) const;
+  visualization_msgs::msg::Marker ExportSurfacesForDisplay(
+      const std_msgs::msg::ColorRGBA& collision_color,
+      const std_msgs::msg::ColorRGBA& free_color,
+      const std_msgs::msg::ColorRGBA& unknown_color) const;
 
-  visualization_msgs::MarkerArray ExportSurfacesForSeparateDisplay(
-      const std_msgs::ColorRGBA& collision_color,
-      const std_msgs::ColorRGBA& free_color,
-      const std_msgs::ColorRGBA& unknown_color) const;
+  visualization_msgs::msg::MarkerArray ExportSurfacesForSeparateDisplay(
+      const std_msgs::msg::ColorRGBA& collision_color,
+      const std_msgs::msg::ColorRGBA& free_color,
+      const std_msgs::msg::ColorRGBA& unknown_color) const;
 
-  visualization_msgs::Marker ExportConnectedComponentsForDisplay(
+  visualization_msgs::msg::Marker ExportConnectedComponentsForDisplay(
       const bool color_unknown_components) const;
 
   std::vector<std::vector<GRID_INDEX>> ExtractConnectedComponents();

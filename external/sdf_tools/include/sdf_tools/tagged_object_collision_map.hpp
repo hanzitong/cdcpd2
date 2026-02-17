@@ -3,13 +3,13 @@
 #include <string>
 #include <Eigen/Geometry>
 #include <Eigen/Sparse>
-#include <visualization_msgs/MarkerArray.h>
+#include <visualization_msgs/msg/marker_array.hpp>
 #include <arc_utilities/voxel_grid.hpp>
 #include <arc_utilities/arc_helpers.hpp>
 #include <arc_utilities/serialization.hpp>
 #include <sdf_tools/sdf.hpp>
 #include <sdf_tools/sdf_generation.hpp>
-#include <sdf_tools/TaggedObjectCollisionMap.h>
+#include <sdf_tools/msg/tagged_object_collision_map.hpp>
 #include <sdf_tools/topology_computation.hpp>
 
 #ifndef TAGGED_OBJECT_COLLISION_MAP_HPP
@@ -47,10 +47,10 @@ class TaggedObjectCollisionMapGrid
 {
 protected:
 
-  inline static std_msgs::ColorRGBA GenerateComponentColor(
+  inline static std_msgs::msg::ColorRGBA GenerateComponentColor(
       const uint32_t component, const float alpha=1.0f)
   {
-    return arc_helpers::GenerateUniqueColor<std_msgs::ColorRGBA>(component,
+    return arm_helpers::GenerateUniqueColor<std_msgs::msg::ColorRGBA>(component,
                                                                  alpha);
   }
 
@@ -674,13 +674,13 @@ public:
       std::vector<uint8_t>& buffer,
       const std::function<uint64_t(const TAGGED_OBJECT_COLLISION_CELL&,
                                    std::vector<uint8_t>&)>& value_serializer
-      = arc_utilities::SerializeFixedSizePOD<TAGGED_OBJECT_COLLISION_CELL>) const;
+      = arm_utilities::SerializeFixedSizePOD<TAGGED_OBJECT_COLLISION_CELL>) const;
 
   virtual uint64_t DeserializeSelf(
       const std::vector<uint8_t>& buffer, const uint64_t current,
       const std::function<std::pair<TAGGED_OBJECT_COLLISION_CELL, uint64_t>(
         const std::vector<uint8_t>&, const uint64_t)>& value_deserializer
-      = arc_utilities::DeserializeFixedSizePOD<TAGGED_OBJECT_COLLISION_CELL>);
+      = arm_utilities::DeserializeFixedSizePOD<TAGGED_OBJECT_COLLISION_CELL>);
 
   static void SaveToFile(const TaggedObjectCollisionMapGrid& map,
                          const std::string& filepath,
@@ -688,11 +688,11 @@ public:
 
   static TaggedObjectCollisionMapGrid LoadFromFile(const std::string& filepath);
 
-  static sdf_tools::TaggedObjectCollisionMap GetMessageRepresentation(
+  static sdf_tools::msg::TaggedObjectCollisionMap GetMessageRepresentation(
       const TaggedObjectCollisionMapGrid& map);
 
   static TaggedObjectCollisionMapGrid LoadFromMessageRepresentation(
-      const sdf_tools::TaggedObjectCollisionMap& message);
+      const sdf_tools::msg::TaggedObjectCollisionMap& message);
 
   uint32_t UpdateConnectedComponents();
 
@@ -910,7 +910,11 @@ public:
         }
       }
     }
-    return MakeObjectSDFs(arc_helpers::GetKeys(object_id_map),
+    std::vector<uint32_t> object_ids;
+    for (const auto& pair : object_id_map) {
+      object_ids.push_back(pair.first);
+    }
+    return MakeObjectSDFs(object_ids,
                           unknown_is_filled, add_virtual_border);
   }
 
@@ -919,59 +923,59 @@ public:
   //////////////////////////////////////////////////////////////////////////////
 
   // Note that this does not fill out the namespace field
-  visualization_msgs::Marker DefaultMarker() const;
+  visualization_msgs::msg::Marker DefaultMarker() const;
 
   // Pass an emtpy vector to draw all objects, ignores id 0
-  visualization_msgs::Marker ExportForDisplay(
+  visualization_msgs::msg::Marker ExportForDisplay(
       const float alpha,
       const std::vector<uint32_t>& objects_to_draw = {}) const;
 
   // Pass an emtpy vector to draw all objects, ignores id 0
-  visualization_msgs::MarkerArray ExportForDisplayUniqueNs(
+  visualization_msgs::msg::MarkerArray ExportForDisplayUniqueNs(
       const float alpha,
       const std::vector<uint32_t>& objects_to_draw = {}) const;
 
   // Displays all objects, defaulting the color if none is given, ignores id 0
-  visualization_msgs::Marker ExportForDisplay(
-      std::map<uint32_t, std_msgs::ColorRGBA> color_map = {}) const;
+  visualization_msgs::msg::Marker ExportForDisplay(
+      std::map<uint32_t, std_msgs::msg::ColorRGBA> color_map = {}) const;
 
   // Displays all objects, defaulting the color if none is given, ignores id 0
-  visualization_msgs::MarkerArray ExportForDisplayUniqueNs(
-      std::map<uint32_t, std_msgs::ColorRGBA> color_map = {}) const;
+  visualization_msgs::msg::MarkerArray ExportForDisplayUniqueNs(
+      std::map<uint32_t, std_msgs::msg::ColorRGBA> color_map = {}) const;
 
   // Pass an emtpy vector to draw all objects, ignores id 0
-  visualization_msgs::Marker ExportContourOnlyForDisplay(
+  visualization_msgs::msg::Marker ExportContourOnlyForDisplay(
       const float alpha,
       const std::vector<uint32_t>& objects_to_draw = {}) const;
 
   // Pass an emtpy vector to draw all objects, ignores id 0
-  visualization_msgs::MarkerArray ExportContourOnlyForDisplayUniqueNs(
+  visualization_msgs::msg::MarkerArray ExportContourOnlyForDisplayUniqueNs(
       const float alpha,
       const std::vector<uint32_t>& objects_to_draw = {}) const;
 
   // Displays all objects, defaulting the color if none is given, ignores id 0
-  visualization_msgs::Marker ExportContourOnlyForDisplay(
-      std::map<uint32_t, std_msgs::ColorRGBA> color_map = {}) const;
+  visualization_msgs::msg::Marker ExportContourOnlyForDisplay(
+      std::map<uint32_t, std_msgs::msg::ColorRGBA> color_map = {}) const;
 
   // Displays all objects, defaulting the color if none is given, ignores id 0
-  visualization_msgs::MarkerArray ExportContourOnlyForDisplayUniqueNs(
-      std::map<uint32_t, std_msgs::ColorRGBA> color_map = {}) const;
+  visualization_msgs::msg::MarkerArray ExportContourOnlyForDisplayUniqueNs(
+      std::map<uint32_t, std_msgs::msg::ColorRGBA> color_map = {}) const;
 
-  visualization_msgs::Marker ExportForDisplayOccupancyOnly(
-      const std_msgs::ColorRGBA& collision_color,
-      const std_msgs::ColorRGBA& free_color,
-      const std_msgs::ColorRGBA& unknown_color) const;
+  visualization_msgs::msg::Marker ExportForDisplayOccupancyOnly(
+      const std_msgs::msg::ColorRGBA& collision_color,
+      const std_msgs::msg::ColorRGBA& free_color,
+      const std_msgs::msg::ColorRGBA& unknown_color) const;
 
-  visualization_msgs::Marker ExportConnectedComponentsForDisplay(
+  visualization_msgs::msg::Marker ExportConnectedComponentsForDisplay(
       const bool color_unknown_components) const;
 
-  visualization_msgs::Marker ExportConvexSegmentForDisplay(
+  visualization_msgs::msg::Marker ExportConvexSegmentForDisplay(
       const uint32_t object_id,
       const uint32_t convex_segment) const;
 
-  visualization_msgs::Marker ExportSurfaceForDisplay(
+  visualization_msgs::msg::Marker ExportSurfaceForDisplay(
       const std::unordered_map<GRID_INDEX, uint8_t>& surface,
-      const std_msgs::ColorRGBA& surface_color) const;
+      const std_msgs::msg::ColorRGBA& surface_color) const;
 };
 }
 

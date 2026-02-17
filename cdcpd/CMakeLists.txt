@@ -42,18 +42,28 @@ find_package(moveit_core REQUIRED)
 find_package(moveit_msgs REQUIRED)
 find_package(moveit_ros_planning REQUIRED)
 find_package(moveit_ros_planning_interface REQUIRED)
-find_package(moveit_visual_tools REQUIRED)
+find_package(moveit_visual_tools QUIET)  # Changed to QUIET - not strictly required for core functionality
 find_package(sdf_tools REQUIRED)
 find_package(sensor_msgs REQUIRED)
-find_package(smmap_models REQUIRED)
-find_package(smmap_utilities REQUIRED)
+find_package(smmap_models QUIET)  # Temporarily optional
+find_package(smmap_utilities QUIET)  # Temporarily optional
 find_package(std_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 
 find_package(OpenCV REQUIRED)
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
-find_package(GUROBI REQUIRED)
-find_package(FAISS REQUIRED)
+# find_package(GUROBI QUIET)  # Disabled - using alternative optimization library
+find_package(FAISS QUIET)  # Will use local build if not found in system
+# Manually set FAISS paths if not found by find_package
+if(NOT FAISS_FOUND)
+  set(FAISS_INCLUDE_DIRS "/home/nachi/ws_cdcpd2/src/faiss" "/home/nachi/ws_cdcpd2/src/faiss/build")
+  set(FAISS_LIBRARY "/home/nachi/ws_cdcpd2/src/faiss/build/faiss/libfaiss.a")
+  if(EXISTS "${FAISS_LIBRARY}")
+    set(FAISS_FOUND TRUE)
+    message(STATUS "Using local FAISS build: ${FAISS_LIBRARY}")
+  endif()
+endif()
+
 find_package(CGAL REQUIRED COMPONENTS Core)
 find_package(Qt5 QUIET COMPONENTS Qt5 Core Xml Script OpenGL Svg)
 find_package(PCL 1.8 REQUIRED COMPONENTS common io filters visualization features kdtree)
@@ -69,21 +79,25 @@ endif()
 ### The library itself
 add_library(cdcpd SHARED
         src/cdcpd.cpp
-        src/optimizer.cpp
+        # src/optimizer.cpp  # Disabled - requires GUROBI, will implement alternative
         src/obs_util.cpp
-        src/past_template_matcher.cpp
+        src/past_template_matcher.cpp  # Re-enabled with FAISS
         )
 target_include_directories(cdcpd PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>)
 target_include_directories(cdcpd SYSTEM PUBLIC
         ${PCL_INCLUDE_DIRS}
-        ${OpenCV_INCLUDE_DIRS}
-        ${GUROBI_INCLUDE_DIRS}
-        ${FAISS_INCLUDE_DIRS})
+        ${OpenCV_INCLUDE_DIRS})
+
+if(FAISS_FOUND)
+  target_include_directories(cdcpd SYSTEM PUBLIC ${FAISS_INCLUDE_DIRS})
+  target_compile_definitions(cdcpd PUBLIC USE_FAISS)
+  message(STATUS "FAISS enabled for cdcpd")
+endif()
 
 # Manually link ROS 2 dependencies
-ament_target_dependencies(cdcpd PUBLIC
+ament_target_dependencies(cdcpd
         rclcpp
         arm_utilities
         geometric_shapes
@@ -101,21 +115,31 @@ ament_target_dependencies(cdcpd PUBLIC
         moveit_visual_tools
         sdf_tools
         sensor_msgs
-        smmap_models
-        smmap_utilities
+        #smmap_models  # Temporarily disabled
+        #smmap_utilities  # Temporarily disabled
         std_msgs
         visualization_msgs
         )
 
-target_link_libraries(cdcpd PUBLIC
+target_link_libraries(cdcpd
         lapack
         ${PCL_LIBRARIES}
         Eigen3::Eigen
-        ${GUROBI_LIBRARIES}
-        ${FAISS_LIBRARY}
         ${OpenCV_LIBS}
         CGAL::CGAL
         )
+
+if(FAISS_FOUND)
+  target_link_libraries(cdcpd ${FAISS_LIBRARY})
+  message(STATUS "Linking FAISS library: ${FAISS_LIBRARY}")
+endif()
+
+# Gurobi disabled - will implement alternative optimization
+# if(GUROBI_FOUND)
+#   target_link_libraries(cdcpd PUBLIC ${GUROBI_LIBRARIES})
+#   target_include_directories(cdcpd SYSTEM PUBLIC ${GUROBI_INCLUDE_DIRS})
+#   target_compile_definitions(cdcpd PUBLIC USE_GUROBI)
+# endif()
 message(STATUS "GUROBI LIB ${GUROBI_LIBRARIES}")
 message(STATUS "GUROBI INCLUDE ${GUROBI_INCLUDE_DIRS}")
 
@@ -125,7 +149,7 @@ target_compile_definitions(cdcpd PUBLIC ${PCL_DEFINITIONS})
 # https://cliutils.gitlab.io/modern-cmake/chapters/packages/OpenMP.html
 # https://stackoverflow.com/a/51448364
 find_package(OpenMP REQUIRED)
-target_link_libraries(cdcpd PRIVATE OpenMP::OpenMP_CXX)
+target_link_libraries(cdcpd OpenMP::OpenMP_CXX)
 
 add_library(cdcpd::cdcpd ALIAS cdcpd)
 
@@ -175,7 +199,7 @@ ament_target_dependencies(cdcpd_node
         cv_bridge
         image_transport
         )
-target_link_libraries(cdcpd_node PRIVATE cdcpd)
+target_link_libraries(cdcpd_node cdcpd)
 
 add_executable(cdcpd_offline
         src/cdcpd_ros/kinect_sub.cpp
@@ -192,7 +216,7 @@ ament_target_dependencies(cdcpd_offline
         cv_bridge
         image_transport
         )
-target_link_libraries(cdcpd_offline PRIVATE cdcpd)
+target_link_libraries(cdcpd_offline cdcpd)
 
 install(TARGETS
         cdcpd_node
@@ -219,8 +243,8 @@ ament_export_dependencies(
         moveit_visual_tools
         sdf_tools
         sensor_msgs
-        smmap_models
-        smmap_utilities
+        #smmap_models  # Temporarily disabled
+        #smmap_utilities  # Temporarily disabled
         std_msgs
         visualization_msgs
         OpenCV

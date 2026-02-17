@@ -2,7 +2,7 @@
 #include <cdcpd/cdcpd.h>
 #include <geometric_shapes/shapes.h>
 #include <geometry_msgs/msg/transform_stamped.hpp>
-#include <jsk_recognition_msgs/msg/bounding_box.hpp>
+// #include <jsk_recognition_msgs/msg/bounding_box.hpp>  // Temporarily disabled - package not installed
 #include <moveit/collision_detection/collision_common.h>
 #include <moveit/collision_detection/collision_tools.h>
 #include <moveit/planning_scene_monitor/planning_scene_monitor.h>
@@ -121,17 +121,17 @@ public:
   std::string collision_body_prefix{"cdcpd_tracked_point_"};
   std::string robot_namespace_;
   std::string robot_description_;
-  rclcpp::Publisher<PointCloud>::SharedPtr original_publisher;
-  rclcpp::Publisher<PointCloud>::SharedPtr masked_publisher;
-  rclcpp::Publisher<PointCloud>::SharedPtr downsampled_publisher;
-  rclcpp::Publisher<PointCloud>::SharedPtr template_publisher;
-  rclcpp::Publisher<PointCloud>::SharedPtr pre_template_publisher;
-  rclcpp::Publisher<PointCloud>::SharedPtr output_publisher;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr original_publisher;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr masked_publisher;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr downsampled_publisher;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr template_publisher;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pre_template_publisher;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr output_publisher;
   rclcpp::Publisher<vm::Marker>::SharedPtr order_pub;
   rclcpp::Publisher<vm::MarkerArray>::SharedPtr contact_marker_pub;
-  rclcpp::Publisher<jsk_recognition_msgs::msg::BoundingBox>::SharedPtr bbox_pub;
+  // rclcpp::Publisher<jsk_recognition_msgs::msg::BoundingBox>::SharedPtr bbox_pub;  // Disabled - jsk not installed
   planning_scene_monitor::PlanningSceneMonitorPtr scene_monitor_;
-  moveit::core::RobotModelPtr model_;
+  moveit::core::RobotModelConstPtr model_;  // Changed to ConstPtr for compatibility
   std::shared_ptr<moveit_visual_tools::MoveItVisualTools> visual_tools_;
   std::string moveit_frame{"robot_root"};
   std::string kinect_tf_name = "kinect2_rgb_optical_frame";
@@ -166,15 +166,15 @@ public:
     model_ = scene_monitor_->getRobotModel();
 
     // Publishers for the data, some visualizations, others consumed by other nodes
-    original_publisher = this->create_publisher<PointCloud>("cdcpd/original", 10);
-    masked_publisher = this->create_publisher<PointCloud>("cdcpd/masked", 10);
-    downsampled_publisher = this->create_publisher<PointCloud>("cdcpd/downsampled", 10);
-    template_publisher = this->create_publisher<PointCloud>("cdcpd/template", 10);
-    pre_template_publisher = this->create_publisher<PointCloud>("cdcpd/pre_template", 10);
-    output_publisher = this->create_publisher<PointCloud>("cdcpd/output", 10);
+    original_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("cdcpd/original", 10);
+    masked_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("cdcpd/masked", 10);
+    downsampled_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("cdcpd/downsampled", 10);
+    template_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("cdcpd/template", 10);
+    pre_template_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("cdcpd/pre_template", 10);
+    output_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("cdcpd/output", 10);
     order_pub = this->create_publisher<vm::Marker>("cdcpd/order", 10);
     contact_marker_pub = this->create_publisher<vm::MarkerArray>("contacts", 10);
-    bbox_pub = this->create_publisher<jsk_recognition_msgs::msg::BoundingBox>("cdcpd/bbox", 10);
+    // bbox_pub = this->create_publisher<jsk_recognition_msgs::msg::BoundingBox>("cdcpd/bbox", 10);
 
     // Moveit Visualization
     auto const viz_robot_state_topic = "cdcpd_moveit_node/robot_state";
@@ -248,7 +248,11 @@ public:
           auto const gripper = tf_buffer_->lookupTransform(kinect_tf_name, left_tf_name, tf2::TimePointZero);
           auto const config = ehc::GeometryTransformToEigenIsometry3d(gripper.transform);
           RCLCPP_DEBUG_STREAM(this->get_logger(), "left gripper: " << config.translation());
-          q_config.push_back(config);
+          // q_config.push_back(config);  // Disabled - need to convert to GripperPose
+          smmap::GripperPose gp;
+          gp.position = config.translation();
+          gp.orientation = Eigen::Quaterniond(config.rotation());
+          q_config.push_back(gp);
 
         } catch (tf2::TransformException const& ex) {
           RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 10000,
@@ -261,7 +265,11 @@ public:
           auto const gripper = tf_buffer_->lookupTransform(kinect_tf_name, right_tf_name, tf2::TimePointZero);
           auto const config = ehc::GeometryTransformToEigenIsometry3d(gripper.transform);
           RCLCPP_DEBUG_STREAM(this->get_logger(), "right gripper: " << config.translation());
-          q_config.push_back(config);
+          // q_config.push_back(config);  // Disabled - need to convert to GripperPose
+          smmap::GripperPose gp;
+          gp.position = config.translation();
+          gp.orientation = Eigen::Quaterniond(config.rotation());
+          q_config.push_back(gp);
 
         } catch (tf2::TransformException const& ex) {
           RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 10000,
@@ -272,32 +280,35 @@ public:
       // Perform and record the update
       auto const hsv_mask = getHsvMask(node_ptr, rgb);
       auto const n_grippers = q_config.size();
-      const smmap::AllGrippersSinglePoseDelta q_dot{n_grippers, kinematics::Vector6d::Zero()};
+      // const smmap::AllGrippersSinglePoseDelta q_dot{n_grippers, kinematics::Vector6d::Zero()};  // Disabled
+      smmap::AllGrippersSinglePoseDelta q_dot;  // Empty for now
 
       // publish bbox
       {
-        jsk_recognition_msgs::msg::BoundingBox bbox_msg;
-        bbox_msg.header.stamp = this->now();
-        bbox_msg.header.frame_id = kinect_tf_name;
+        // jsk_recognition_msgs::msg::BoundingBox bbox_msg;
+        // bbox_msg.header.stamp = this->now();
+        // bbox_msg.header.frame_id = kinect_tf_name;
 
         auto const bbox_size = extent_to_env_size(cdcpd.last_lower_bounding_box, cdcpd.last_upper_bounding_box);
         auto const bbox_center = extent_to_center(cdcpd.last_lower_bounding_box, cdcpd.last_upper_bounding_box);
-        bbox_msg.pose.position.x = bbox_center.x();
-        bbox_msg.pose.position.y = bbox_center.y();
-        bbox_msg.pose.position.z = bbox_center.z();
-        bbox_msg.pose.orientation.w = 1;
-        bbox_msg.dimensions.x = bbox_size.x();
-        bbox_msg.dimensions.y = bbox_size.y();
-        bbox_msg.dimensions.z = bbox_size.z();
-        bbox_pub->publish(bbox_msg);
+        // bbox_msg.pose.position.x = bbox_center.x();
+        // bbox_msg.pose.position.y = bbox_center.y();
+        // bbox_msg.pose.position.z = bbox_center.z();
+        // bbox_msg.pose.orientation.w = 1;
+        // bbox_msg.dimensions.x = bbox_size.x();
+        // bbox_msg.dimensions.y = bbox_size.y();
+        // bbox_msg.dimensions.z = bbox_size.z();
+        // bbox_pub->publish(bbox_msg);
       }
 
       // publish the template before processing
       {
         auto time = this->now();
-        tracked_points->header.frame_id = kinect_tf_name;
-        tracked_points->header.stamp = pcl_conversions::toPCL(time).stamp;
-        pre_template_publisher->publish(*tracked_points);
+        sensor_msgs::msg::PointCloud2 pcl_msg;
+        pcl::toROSMsg(*tracked_points, pcl_msg);
+        pcl_msg.header.frame_id = kinect_tf_name;
+        pcl_msg.header.stamp = time;
+        pre_template_publisher->publish(pcl_msg);
       }
 
       ObstacleConstraints obstacle_constraints;
@@ -322,20 +333,36 @@ public:
       {
         auto time = this->now();
         auto pcl_time = pcl_conversions::toPCL(time);
-        out.original_cloud->header.stamp = pcl_time.stamp;
-        out.masked_point_cloud->header.stamp = pcl_time.stamp;
-        out.downsampled_cloud->header.stamp = pcl_time.stamp;
-        out.cpd_output->header.stamp = pcl_time.stamp;
-        out.gurobi_output->header.stamp = pcl_time.stamp;
+        out.original_cloud->header.stamp = pcl_time;
+        out.masked_point_cloud->header.stamp = pcl_time;
+        out.downsampled_cloud->header.stamp = pcl_time;
+        out.cpd_output->header.stamp = pcl_time;
+        out.gurobi_output->header.stamp = pcl_time;
       }
 
       // Publish the point clouds
       {
-        original_publisher->publish(*out.original_cloud);
-        masked_publisher->publish(*out.masked_point_cloud);
-        downsampled_publisher->publish(*out.downsampled_cloud);
-        template_publisher->publish(*out.cpd_output);
-        output_publisher->publish(*out.gurobi_output);
+        sensor_msgs::msg::PointCloud2 msg;
+        
+        pcl::toROSMsg(*out.original_cloud, msg);
+        msg.header.frame_id = kinect_tf_name;
+        original_publisher->publish(msg);
+        
+        pcl::toROSMsg(*out.masked_point_cloud, msg);
+        msg.header.frame_id = kinect_tf_name;
+        masked_publisher->publish(msg);
+        
+        pcl::toROSMsg(*out.downsampled_cloud, msg);
+        msg.header.frame_id = kinect_tf_name;
+        downsampled_publisher->publish(msg);
+        
+        pcl::toROSMsg(*out.cpd_output, msg);
+        msg.header.frame_id = kinect_tf_name;
+        template_publisher->publish(msg);
+        
+        pcl::toROSMsg(*out.gurobi_output, msg);
+        msg.header.frame_id = kinect_tf_name;
+        output_publisher->publish(msg);
       }
 
       // Publish markers indication the order of the points

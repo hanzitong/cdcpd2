@@ -13,8 +13,10 @@
 #include <CGAL/Surface_mesh.h>
 #include <CGAL/convex_hull_3.h>
 #include <CGAL/subdivision_method_3.h>
+#ifdef USE_GUROBI
 #include <gurobi_c++.h>
-#include <moveit_msgs/CollisionObject.h>
+#endif
+#include <moveit_msgs/msg/collision_object.hpp>
 
 #include <Eigen/Dense>
 #include <algorithm>

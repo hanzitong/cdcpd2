@@ -7,7 +7,7 @@
 #include <fstream>
 #include <stdexcept>
 #include <zlib.h>
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 #include <list>
 #include <unordered_map>
 #include <sdf_tools/tagged_object_collision_map.hpp>
@@ -16,7 +16,7 @@
 #include <arc_utilities/eigen_helpers_conversions.hpp>
 #include <arc_utilities/pretty_print.hpp>
 #include <arc_utilities/simple_kmeans_clustering.hpp>
-#include <sdf_tools/TaggedObjectCollisionMap.h>
+#include <sdf_tools/msg/tagged_object_collision_map.hpp>
 
 using namespace sdf_tools;
 
@@ -29,45 +29,45 @@ uint64_t TaggedObjectCollisionMapGrid::SerializeSelf(
   UNUSED(value_serializer);
   const uint64_t start_buffer_size = buffer.size();
   // Serialize the initialized
-  arc_utilities::SerializeFixedSizePOD<uint8_t>((uint8_t)initialized_, buffer);
+  arm_utilities::SerializeFixedSizePOD<uint8_t>((uint8_t)initialized_, buffer);
   // Serialize the transforms
-  arc_utilities::SerializeEigen<Eigen::Isometry3d>(origin_transform_, buffer);
-  arc_utilities::SerializeEigen<Eigen::Isometry3d>(inverse_origin_transform_,
+  arm_utilities::SerializeEigen<Eigen::Isometry3d>(origin_transform_, buffer);
+  arm_utilities::SerializeEigen<Eigen::Isometry3d>(inverse_origin_transform_,
                                                    buffer);
   // Serialize the data
-  arc_utilities::SerializeVector<TAGGED_OBJECT_COLLISION_CELL>(
+  arm_utilities::SerializeVector<TAGGED_OBJECT_COLLISION_CELL>(
         data_, buffer,
-        arc_utilities::SerializeFixedSizePOD<TAGGED_OBJECT_COLLISION_CELL>);
+        arm_utilities::SerializeFixedSizePOD<TAGGED_OBJECT_COLLISION_CELL>);
   // Serialize the cell sizes
-  arc_utilities::SerializeFixedSizePOD<double>(cell_x_size_, buffer);
-  arc_utilities::SerializeFixedSizePOD<double>(cell_y_size_, buffer);
-  arc_utilities::SerializeFixedSizePOD<double>(cell_z_size_, buffer);
-  arc_utilities::SerializeFixedSizePOD<double>(inv_cell_x_size_, buffer);
-  arc_utilities::SerializeFixedSizePOD<double>(inv_cell_y_size_, buffer);
-  arc_utilities::SerializeFixedSizePOD<double>(inv_cell_z_size_, buffer);
+  arm_utilities::SerializeFixedSizePOD<double>(cell_x_size_, buffer);
+  arm_utilities::SerializeFixedSizePOD<double>(cell_y_size_, buffer);
+  arm_utilities::SerializeFixedSizePOD<double>(cell_z_size_, buffer);
+  arm_utilities::SerializeFixedSizePOD<double>(inv_cell_x_size_, buffer);
+  arm_utilities::SerializeFixedSizePOD<double>(inv_cell_y_size_, buffer);
+  arm_utilities::SerializeFixedSizePOD<double>(inv_cell_z_size_, buffer);
   // Serialize the grid sizes
-  arc_utilities::SerializeFixedSizePOD<double>(x_size_, buffer);
-  arc_utilities::SerializeFixedSizePOD<double>(y_size_, buffer);
-  arc_utilities::SerializeFixedSizePOD<double>(z_size_, buffer);
+  arm_utilities::SerializeFixedSizePOD<double>(x_size_, buffer);
+  arm_utilities::SerializeFixedSizePOD<double>(y_size_, buffer);
+  arm_utilities::SerializeFixedSizePOD<double>(z_size_, buffer);
   // Serialize the control/bounds values
-  arc_utilities::SerializeFixedSizePOD<int64_t>(stride1_, buffer);
-  arc_utilities::SerializeFixedSizePOD<int64_t>(stride2_, buffer);
-  arc_utilities::SerializeFixedSizePOD<int64_t>(num_x_cells_, buffer);
-  arc_utilities::SerializeFixedSizePOD<int64_t>(num_y_cells_, buffer);
-  arc_utilities::SerializeFixedSizePOD<int64_t>(num_z_cells_, buffer);
+  arm_utilities::SerializeFixedSizePOD<int64_t>(stride1_, buffer);
+  arm_utilities::SerializeFixedSizePOD<int64_t>(stride2_, buffer);
+  arm_utilities::SerializeFixedSizePOD<int64_t>(num_x_cells_, buffer);
+  arm_utilities::SerializeFixedSizePOD<int64_t>(num_y_cells_, buffer);
+  arm_utilities::SerializeFixedSizePOD<int64_t>(num_z_cells_, buffer);
   // Serialize the default value
-  arc_utilities::SerializeFixedSizePOD<TAGGED_OBJECT_COLLISION_CELL>(
+  arm_utilities::SerializeFixedSizePOD<TAGGED_OBJECT_COLLISION_CELL>(
         default_value_, buffer);
   // Serialize the OOB value
-  arc_utilities::SerializeFixedSizePOD<TAGGED_OBJECT_COLLISION_CELL>(
+  arm_utilities::SerializeFixedSizePOD<TAGGED_OBJECT_COLLISION_CELL>(
         oob_value_, buffer);
   // Serialize TaggedObjectCollisionMapGrid stuff
-  arc_utilities::SerializeFixedSizePOD<uint32_t>(number_of_components_, buffer);
-  arc_utilities::SerializeFixedSizePOD<uint32_t>(number_of_convex_segments_, buffer);
-  arc_utilities::SerializeString(frame_, buffer);
-  arc_utilities::SerializeFixedSizePOD<uint8_t>((uint8_t)components_valid_,
+  arm_utilities::SerializeFixedSizePOD<uint32_t>(number_of_components_, buffer);
+  arm_utilities::SerializeFixedSizePOD<uint32_t>(number_of_convex_segments_, buffer);
+  arm_utilities::SerializeString(frame_, buffer);
+  arm_utilities::SerializeFixedSizePOD<uint8_t>((uint8_t)components_valid_,
                                               buffer);
-  arc_utilities::SerializeFixedSizePOD<uint8_t>((uint8_t)convex_segments_valid_,
+  arm_utilities::SerializeFixedSizePOD<uint8_t>((uint8_t)convex_segments_valid_,
                                               buffer);
   // Figure out how many bytes were written
   const uint64_t end_buffer_size = buffer.size();
@@ -84,138 +84,138 @@ uint64_t TaggedObjectCollisionMapGrid::DeserializeSelf(
   uint64_t current_position = current;
   // Deserialize the initialized
   const std::pair<uint8_t, uint64_t> initialized_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<uint8_t>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<uint8_t>(buffer,
                                                         current_position);
   initialized_ = (bool)initialized_deserialized.first;
   current_position += initialized_deserialized.second;
   // Deserialize the transforms
   const std::pair<Eigen::Isometry3d, uint64_t> origin_transform_deserialized
-      = arc_utilities::DeserializeEigen<Eigen::Isometry3d>(buffer,
+      = arm_utilities::DeserializeEigen<Eigen::Isometry3d>(buffer,
                                                            current_position);
   origin_transform_ = origin_transform_deserialized.first;
   current_position += origin_transform_deserialized.second;
   const std::pair<Eigen::Isometry3d, uint64_t>
       inverse_origin_transform_deserialized
-      = arc_utilities::DeserializeEigen<Eigen::Isometry3d>(buffer,
+      = arm_utilities::DeserializeEigen<Eigen::Isometry3d>(buffer,
                                                            current_position);
   inverse_origin_transform_ = inverse_origin_transform_deserialized.first;
   current_position += inverse_origin_transform_deserialized.second;
   // Deserialize the data
   const std::pair<std::vector<TAGGED_OBJECT_COLLISION_CELL>, uint64_t>
       data_deserialized
-      = arc_utilities::DeserializeVector<TAGGED_OBJECT_COLLISION_CELL>(
+      = arm_utilities::DeserializeVector<TAGGED_OBJECT_COLLISION_CELL>(
         buffer, current_position,
-        arc_utilities::DeserializeFixedSizePOD<TAGGED_OBJECT_COLLISION_CELL>);
+        arm_utilities::DeserializeFixedSizePOD<TAGGED_OBJECT_COLLISION_CELL>);
   data_ = data_deserialized.first;
   current_position += data_deserialized.second;
   // Deserialize the cell sizes
   const std::pair<double, uint64_t> cell_x_size_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<double>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<double>(buffer,
                                                        current_position);
   cell_x_size_ = cell_x_size_deserialized.first;
   current_position += cell_x_size_deserialized.second;
   const std::pair<double, uint64_t> cell_y_size_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<double>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<double>(buffer,
                                                        current_position);
   cell_y_size_ = cell_y_size_deserialized.first;
   current_position += cell_y_size_deserialized.second;
   const std::pair<double, uint64_t> cell_z_size_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<double>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<double>(buffer,
                                                        current_position);
   cell_z_size_ = cell_z_size_deserialized.first;
   current_position += cell_z_size_deserialized.second;
   const std::pair<double, uint64_t> inv_cell_x_size_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<double>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<double>(buffer,
                                                        current_position);
   inv_cell_x_size_ = inv_cell_x_size_deserialized.first;
   current_position += inv_cell_x_size_deserialized.second;
   const std::pair<double, uint64_t> inv_cell_y_size_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<double>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<double>(buffer,
                                                        current_position);
   inv_cell_y_size_ = inv_cell_y_size_deserialized.first;
   current_position += inv_cell_y_size_deserialized.second;
   const std::pair<double, uint64_t> inv_cell_z_size_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<double>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<double>(buffer,
                                                        current_position);
   inv_cell_z_size_ = inv_cell_z_size_deserialized.first;
   current_position += inv_cell_z_size_deserialized.second;
   // Deserialize the grid sizes
   const std::pair<double, uint64_t> x_size_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<double>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<double>(buffer,
                                                        current_position);
   x_size_ = x_size_deserialized.first;
   current_position += x_size_deserialized.second;
   const std::pair<double, uint64_t> y_size_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<double>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<double>(buffer,
                                                        current_position);
   y_size_ = y_size_deserialized.first;
   current_position += y_size_deserialized.second;
   const std::pair<double, uint64_t> z_size_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<double>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<double>(buffer,
                                                        current_position);
   z_size_ = z_size_deserialized.first;
   current_position += z_size_deserialized.second;
   // Deserialize the control/bounds values
   const std::pair<int64_t, uint64_t> stride1_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<int64_t>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<int64_t>(buffer,
                                                         current_position);
   stride1_ = stride1_deserialized.first;
   current_position += stride1_deserialized.second;
   const std::pair<int64_t, uint64_t> stride2_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<int64_t>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<int64_t>(buffer,
                                                         current_position);
   stride2_ = stride2_deserialized.first;
   current_position += stride2_deserialized.second;
   const std::pair<int64_t, uint64_t> num_x_cells_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<int64_t>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<int64_t>(buffer,
                                                         current_position);
   num_x_cells_ = num_x_cells_deserialized.first;
   current_position += num_x_cells_deserialized.second;
   const std::pair<int64_t, uint64_t> num_y_cells_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<int64_t>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<int64_t>(buffer,
                                                         current_position);
   num_y_cells_ = num_y_cells_deserialized.first;
   current_position += num_y_cells_deserialized.second;
   const std::pair<int64_t, uint64_t> num_z_cells_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<int64_t>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<int64_t>(buffer,
                                                         current_position);
   num_z_cells_ = num_z_cells_deserialized.first;
   current_position += num_z_cells_deserialized.second;
   // Deserialize the default value
   const std::pair<TAGGED_OBJECT_COLLISION_CELL, uint64_t>
       default_value_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<TAGGED_OBJECT_COLLISION_CELL>(
+      = arm_utilities::DeserializeFixedSizePOD<TAGGED_OBJECT_COLLISION_CELL>(
           buffer, current_position);
   default_value_ = default_value_deserialized.first;
   current_position += default_value_deserialized.second;
   // Deserialize the OOB value
   const std::pair<TAGGED_OBJECT_COLLISION_CELL, uint64_t>
       oob_value_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<TAGGED_OBJECT_COLLISION_CELL>(
+      = arm_utilities::DeserializeFixedSizePOD<TAGGED_OBJECT_COLLISION_CELL>(
           buffer, current_position);
   oob_value_ = oob_value_deserialized.first;
   current_position += oob_value_deserialized.second;
   // Deserialize CollisionMapGrid stuff
   const std::pair<uint32_t, uint64_t> number_of_components_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<uint32_t>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<uint32_t>(buffer,
                                                          current_position);
   number_of_components_ = number_of_components_deserialized.first;
   current_position += number_of_components_deserialized.second;
   const std::pair<uint32_t, uint64_t> number_of_convex_segments_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<uint32_t>(buffer,
+      = arm_utilities::DeserializeFixedSizePOD<uint32_t>(buffer,
                                                          current_position);
   number_of_convex_segments_ = number_of_convex_segments_deserialized.first;
   current_position += number_of_convex_segments_deserialized.second;
   const std::pair<std::string, uint64_t> frame_deserialized
-      = arc_utilities::DeserializeString<char>(buffer, current_position);
+      = arm_utilities::DeserializeString<char>(buffer, current_position);
   frame_ = frame_deserialized.first;
   current_position += frame_deserialized.second;
   const std::pair<uint8_t, uint64_t> components_valid_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<uint8_t>(buffer, current_position);
+      = arm_utilities::DeserializeFixedSizePOD<uint8_t>(buffer, current_position);
   components_valid_ = (bool)components_valid_deserialized.first;
   current_position += components_valid_deserialized.second;
   const std::pair<uint8_t, uint64_t> convex_segments_valid_deserialized
-      = arc_utilities::DeserializeFixedSizePOD<uint8_t>(buffer, current_position);
+      = arm_utilities::DeserializeFixedSizePOD<uint8_t>(buffer, current_position);
   convex_segments_valid_ = (bool)convex_segments_valid_deserialized.first;
   current_position += convex_segments_valid_deserialized.second;
   // Figure out how many bytes were read
@@ -303,12 +303,12 @@ TaggedObjectCollisionMapGrid TaggedObjectCollisionMapGrid::LoadFromFile(
   }
 }
 
-sdf_tools::TaggedObjectCollisionMap
+sdf_tools::msg::TaggedObjectCollisionMap
 TaggedObjectCollisionMapGrid::GetMessageRepresentation(
     const TaggedObjectCollisionMapGrid& map)
 {
-  sdf_tools::TaggedObjectCollisionMap map_message;
-  map_message.header.stamp = ros::Time::now();
+  sdf_tools::msg::TaggedObjectCollisionMap map_message;
+  map_message.header.stamp = rclcpp::Clock().now();
   map_message.header.frame_id = map.GetFrame();
   std::vector<uint8_t> buffer;
   map.SerializeSelf(buffer);
@@ -319,7 +319,7 @@ TaggedObjectCollisionMapGrid::GetMessageRepresentation(
 
 TaggedObjectCollisionMapGrid
 TaggedObjectCollisionMapGrid::LoadFromMessageRepresentation(
-    const sdf_tools::TaggedObjectCollisionMap& message)
+    const sdf_tools::msg::TaggedObjectCollisionMap& message)
 {
   if (message.is_compressed)
   {
@@ -658,16 +658,16 @@ uint32_t TaggedObjectCollisionMapGrid::UpdateConvexSegments(
 ////////////////////////////////////////////////////////////////////////////////
 
 // Note that this does not fill out the namespace field
-visualization_msgs::Marker TaggedObjectCollisionMapGrid::DefaultMarker() const
+visualization_msgs::msg::Marker TaggedObjectCollisionMapGrid::DefaultMarker() const
 {
-    visualization_msgs::Marker m;
+    visualization_msgs::msg::Marker m;
     // Populate the header
     m.header.frame_id = frame_;
     // Populate the options
     m.id = 1;
-    m.type = visualization_msgs::Marker::CUBE_LIST;
-    m.action = visualization_msgs::Marker::ADD;
-    m.lifetime = ros::Duration(0.0);
+    m.type = visualization_msgs::msg::Marker::CUBE_LIST;
+    m.action = visualization_msgs::msg::Marker::ADD;
+    m.lifetime = rclcpp::Duration(std::chrono::duration<double>(0.0));
     m.frame_locked = false;
     m.pose = EigenHelpersConversions::EigenIsometry3dToGeometryPose(
             GetOriginTransform());
@@ -677,7 +677,7 @@ visualization_msgs::Marker TaggedObjectCollisionMapGrid::DefaultMarker() const
     return m;
 }
 
-visualization_msgs::Marker TaggedObjectCollisionMapGrid::ExportForDisplay(
+visualization_msgs::msg::Marker TaggedObjectCollisionMapGrid::ExportForDisplay(
     const float alpha,
     const std::vector<uint32_t>& objects_to_draw) const
 {
@@ -709,7 +709,7 @@ visualization_msgs::Marker TaggedObjectCollisionMapGrid::ExportForDisplay(
             // Convert grid indices into a real-world location
             const auto location =
                 GridIndexToLocationGridFrame(x_idx, y_idx, z_idx);
-            geometry_msgs::Point new_point;
+            geometry_msgs::msg::Point new_point;
             new_point.x = location(0);
             new_point.y = location(1);
             new_point.z = location(2);
@@ -723,7 +723,7 @@ visualization_msgs::Marker TaggedObjectCollisionMapGrid::ExportForDisplay(
   return display_rep;
 }
 
-visualization_msgs::MarkerArray
+visualization_msgs::msg::MarkerArray
 TaggedObjectCollisionMapGrid::ExportForDisplayUniqueNs(
     const float alpha,
     const std::vector<uint32_t>& objects_to_draw) const
@@ -732,7 +732,7 @@ TaggedObjectCollisionMapGrid::ExportForDisplayUniqueNs(
   const bool draw_all = objects_to_draw.empty();
   // Track the position of each object in display_rep.markers
   std::map<uint32_t, uint32_t> objects_to_draw_map;
-  visualization_msgs::MarkerArray display_rep;
+  visualization_msgs::msg::MarkerArray display_rep;
   for (size_t idx = 0; idx < objects_to_draw.size(); idx++)
   {
     const auto object_id = objects_to_draw[idx];
@@ -772,7 +772,7 @@ TaggedObjectCollisionMapGrid::ExportForDisplayUniqueNs(
             // Convert grid indices into a real-world location
             const auto location =
                 GridIndexToLocationGridFrame(x_idx, y_idx, z_idx);
-            geometry_msgs::Point new_point;
+            geometry_msgs::msg::Point new_point;
             new_point.x = location(0);
             new_point.y = location(1);
             new_point.z = location(2);
@@ -785,7 +785,7 @@ TaggedObjectCollisionMapGrid::ExportForDisplayUniqueNs(
     }
   }
   // Remove all markers with no points in them
-  visualization_msgs::MarkerArray display_rep_pruned;
+  visualization_msgs::msg::MarkerArray display_rep_pruned;
   for (const auto& marker : display_rep.markers)
   {
       if (!marker.points.empty())
@@ -796,8 +796,8 @@ TaggedObjectCollisionMapGrid::ExportForDisplayUniqueNs(
   return display_rep_pruned;
 }
 
-visualization_msgs::Marker TaggedObjectCollisionMapGrid::ExportForDisplay(
-    std::map<uint32_t, std_msgs::ColorRGBA> color_map) const
+visualization_msgs::msg::Marker TaggedObjectCollisionMapGrid::ExportForDisplay(
+    std::map<uint32_t, std_msgs::msg::ColorRGBA> color_map) const
 {
   auto display_rep = DefaultMarker();
   display_rep.ns = "tagged_object_collision_map_display";
@@ -818,13 +818,13 @@ visualization_msgs::Marker TaggedObjectCollisionMapGrid::ExportForDisplay(
               GenerateComponentColor(current_cell.object_id);
           found_itr = color_map.find(current_cell.object_id);
         }
-        const std_msgs::ColorRGBA object_color = found_itr->second;
+        const std_msgs::msg::ColorRGBA object_color = found_itr->second;
         if (object_color.a > 0.0)
         {
           // Convert grid indices into a real-world location
           const auto location =
               GridIndexToLocationGridFrame(x_idx, y_idx, z_idx);
-          geometry_msgs::Point new_point;
+          geometry_msgs::msg::Point new_point;
           new_point.x = location(0);
           new_point.y = location(1);
           new_point.z = location(2);
@@ -837,14 +837,14 @@ visualization_msgs::Marker TaggedObjectCollisionMapGrid::ExportForDisplay(
   return display_rep;
 }
 
-visualization_msgs::MarkerArray
+visualization_msgs::msg::MarkerArray
 TaggedObjectCollisionMapGrid::ExportForDisplayUniqueNs(
-    std::map<uint32_t, std_msgs::ColorRGBA> color_map) const
+    std::map<uint32_t, std_msgs::msg::ColorRGBA> color_map) const
 {
   static const std::string ns_base = "tagged_object_collision_map_display_";
   // Track the position of each object in display_rep.markers
   std::map<uint32_t, uint32_t> objects_to_draw_map;
-  visualization_msgs::MarkerArray display_rep;
+  visualization_msgs::msg::MarkerArray display_rep;
   for (const auto& kv_pair : color_map)
   {
     const auto object_id = kv_pair.first;
@@ -890,7 +890,7 @@ TaggedObjectCollisionMapGrid::ExportForDisplayUniqueNs(
             // Convert grid indices into a real-world location
             const auto location =
                 GridIndexToLocationGridFrame(x_idx, y_idx, z_idx);
-            geometry_msgs::Point new_point;
+            geometry_msgs::msg::Point new_point;
             new_point.x = location(0);
             new_point.y = location(1);
             new_point.z = location(2);
@@ -903,7 +903,7 @@ TaggedObjectCollisionMapGrid::ExportForDisplayUniqueNs(
     }
   }
   // Remove all markers with no points in them
-  visualization_msgs::MarkerArray display_rep_pruned;
+  visualization_msgs::msg::MarkerArray display_rep_pruned;
   for (const auto& marker : display_rep.markers)
   {
       if (!marker.points.empty())
@@ -954,7 +954,7 @@ TaggedObjectCollisionMapGrid::ExportContourOnlyForDisplay(
               // Convert grid indices into a real-world location
               const auto location =
                   GridIndexToLocationGridFrame(x_idx, y_idx, z_idx);
-              geometry_msgs::Point new_point;
+              geometry_msgs::msg::Point new_point;
               new_point.x = location(0);
               new_point.y = location(1);
               new_point.z = location(2);
@@ -969,7 +969,7 @@ TaggedObjectCollisionMapGrid::ExportContourOnlyForDisplay(
   return display_rep;
 }
 
-visualization_msgs::MarkerArray
+visualization_msgs::msg::MarkerArray
 TaggedObjectCollisionMapGrid::ExportContourOnlyForDisplayUniqueNs(
     const float alpha,
     const std::vector<uint32_t>& objects_to_draw) const
@@ -981,7 +981,7 @@ TaggedObjectCollisionMapGrid::ExportContourOnlyForDisplayUniqueNs(
           MakeAllObjectSDFs(true, false)
         : MakeObjectSDFs(objects_to_draw, true, false);
   // Track the position of each object in display_rep.markers
-  visualization_msgs::MarkerArray display_rep;
+  visualization_msgs::msg::MarkerArray display_rep;
   std::map<uint32_t, uint32_t> objects_to_draw_map;
   for (const auto& kv_pair : per_object_sdfs)
   {
@@ -1018,7 +1018,7 @@ TaggedObjectCollisionMapGrid::ExportContourOnlyForDisplayUniqueNs(
               // Convert grid indices into a real-world location
               const auto location =
                   GridIndexToLocationGridFrame(x_idx, y_idx, z_idx);
-              geometry_msgs::Point new_point;
+              geometry_msgs::msg::Point new_point;
               new_point.x = location(0);
               new_point.y = location(1);
               new_point.z = location(2);
@@ -1033,7 +1033,7 @@ TaggedObjectCollisionMapGrid::ExportContourOnlyForDisplayUniqueNs(
     }
   }
   // Remove all markers with no points in them
-  visualization_msgs::MarkerArray display_rep_pruned;
+  visualization_msgs::msg::MarkerArray display_rep_pruned;
   for (const auto& marker : display_rep.markers)
   {
       if (!marker.points.empty())
@@ -1049,7 +1049,7 @@ TaggedObjectCollisionMapGrid::ExportContourOnlyForDisplayUniqueNs(
 // MakeAllObjectSDFs)
 visualization_msgs::Marker
 TaggedObjectCollisionMapGrid::ExportContourOnlyForDisplay(
-    std::map<uint32_t, std_msgs::ColorRGBA> color_map) const
+    std::map<uint32_t, std_msgs::msg::ColorRGBA> color_map) const
 {
   // Make SDFs for the objects that we will be displaying - filters out id 0
   const auto per_object_sdfs = MakeAllObjectSDFs(true, false);
@@ -1090,7 +1090,7 @@ TaggedObjectCollisionMapGrid::ExportContourOnlyForDisplay(
               // Convert grid indices into a real-world location
               const auto location =
                   GridIndexToLocationGridFrame(x_idx, y_idx, z_idx);
-              geometry_msgs::Point new_point;
+              geometry_msgs::msg::Point new_point;
               new_point.x = location(0);
               new_point.y = location(1);
               new_point.z = location(2);
@@ -1105,15 +1105,15 @@ TaggedObjectCollisionMapGrid::ExportContourOnlyForDisplay(
   return display_rep;
 }
 
-visualization_msgs::MarkerArray
+visualization_msgs::msg::MarkerArray
 TaggedObjectCollisionMapGrid::ExportContourOnlyForDisplayUniqueNs(
-    std::map<uint32_t, std_msgs::ColorRGBA> color_map) const
+    std::map<uint32_t, std_msgs::msg::ColorRGBA> color_map) const
 {
   static const std::string ns_base = "tagged_object_collision_map_display_";
   // Make SDFs for the objects that we will be displaying - filters out id 0
   const auto per_object_sdfs = MakeAllObjectSDFs(true, false);
   // Track the position of each object in display_rep.markers
-  visualization_msgs::MarkerArray display_rep;
+  visualization_msgs::msg::MarkerArray display_rep;
   std::map<uint32_t, uint32_t> objects_to_draw_map;
   for (const auto& kv_pair : per_object_sdfs)
   {
@@ -1155,7 +1155,7 @@ TaggedObjectCollisionMapGrid::ExportContourOnlyForDisplayUniqueNs(
               // Convert grid indices into a real-world location
               const auto location =
                   GridIndexToLocationGridFrame(x_idx, y_idx, z_idx);
-              geometry_msgs::Point new_point;
+              geometry_msgs::msg::Point new_point;
               new_point.x = location(0);
               new_point.y = location(1);
               new_point.z = location(2);
@@ -1170,7 +1170,7 @@ TaggedObjectCollisionMapGrid::ExportContourOnlyForDisplayUniqueNs(
     }
   }
   // Remove all markers with no points in them
-  visualization_msgs::MarkerArray display_rep_pruned;
+  visualization_msgs::msg::MarkerArray display_rep_pruned;
   for (const auto& marker : display_rep.markers)
   {
       if (!marker.points.empty())
@@ -1187,11 +1187,11 @@ TaggedObjectCollisionMapGrid::ExportContourOnlyForDisplayUniqueNs(
 
 visualization_msgs::Marker
 TaggedObjectCollisionMapGrid::ExportForDisplayOccupancyOnly(
-    const std_msgs::ColorRGBA& collision_color,
-    const std_msgs::ColorRGBA& free_color,
-    const std_msgs::ColorRGBA& unknown_color) const
+    const std_msgs::msg::ColorRGBA& collision_color,
+    const std_msgs::msg::ColorRGBA& free_color,
+    const std_msgs::msg::ColorRGBA& unknown_color) const
 {
-  visualization_msgs::Marker display_rep = DefaultMarker();
+  visualization_msgs::msg::Marker display_rep = DefaultMarker();
   display_rep.ns = "tagged_object_collision_map_occupancy_display";
   // Add all the cells of the SDF to the message
   for (int64_t x_idx = 0; x_idx < GetNumXCells(); x_idx++)
@@ -1201,7 +1201,7 @@ TaggedObjectCollisionMapGrid::ExportForDisplayOccupancyOnly(
       for (int64_t z_idx = 0; z_idx < GetNumZCells(); z_idx++)
       {
         const auto& cell = GetImmutable(x_idx, y_idx, z_idx).first;
-        std_msgs::ColorRGBA color;
+        std_msgs::msg::ColorRGBA color;
         if (cell.occupancy > 0.5)
         {
           color = collision_color;
@@ -1219,7 +1219,7 @@ TaggedObjectCollisionMapGrid::ExportForDisplayOccupancyOnly(
           // Convert grid indices into a real-world location
           const auto location =
               GridIndexToLocationGridFrame(x_idx, y_idx, z_idx);
-          geometry_msgs::Point new_point;
+          geometry_msgs::msg::Point new_point;
           new_point.x = location(0);
           new_point.y = location(1);
           new_point.z = location(2);
@@ -1236,7 +1236,7 @@ visualization_msgs::Marker
 TaggedObjectCollisionMapGrid::ExportConnectedComponentsForDisplay(
     const bool color_unknown_components) const
 {
-  visualization_msgs::Marker display_rep = DefaultMarker();
+  visualization_msgs::msg::Marker display_rep = DefaultMarker();
   display_rep.ns = "tagged_object_connected_components_display";
   // Add all the cells of the SDF to the message
   for (int64_t x_idx = 0; x_idx < GetNumXCells(); x_idx++)
@@ -1248,7 +1248,7 @@ TaggedObjectCollisionMapGrid::ExportConnectedComponentsForDisplay(
         // Convert grid indices into a real-world location
         const auto location =
             GridIndexToLocationGridFrame(x_idx, y_idx, z_idx);
-        geometry_msgs::Point new_point;
+        geometry_msgs::msg::Point new_point;
         new_point.x = location(0);
         new_point.y = location(1);
         new_point.z = location(2);
@@ -1268,7 +1268,7 @@ TaggedObjectCollisionMapGrid::ExportConnectedComponentsForDisplay(
           }
           else
           {
-            std_msgs::ColorRGBA color;
+            std_msgs::msg::ColorRGBA color;
             color.a = 1.0;
             color.r = 0.5;
             color.g = 0.5;
@@ -1287,7 +1287,7 @@ TaggedObjectCollisionMapGrid::ExportConvexSegmentForDisplay(
     const uint32_t object_id,
     const uint32_t convex_segment) const
 {
-  visualization_msgs::Marker display_rep = DefaultMarker();
+  visualization_msgs::msg::Marker display_rep = DefaultMarker();
   display_rep.ns = "tagged_object_"
                    + std::to_string(object_id)
                    + "_convex_segment_"
@@ -1307,7 +1307,7 @@ TaggedObjectCollisionMapGrid::ExportConvexSegmentForDisplay(
           // Convert grid indices into a real-world location
           const auto location
               = GridIndexToLocationGridFrame(x_idx, y_idx, z_idx);
-          geometry_msgs::Point new_point;
+          geometry_msgs::msg::Point new_point;
           new_point.x = location(0);
           new_point.y = location(1);
           new_point.z = location(2);
@@ -1321,7 +1321,7 @@ TaggedObjectCollisionMapGrid::ExportConvexSegmentForDisplay(
           else
           {
             const auto color =
-                arc_helpers::RGBAColorBuilder<std_msgs::ColorRGBA>
+                EigenHelpers::RGBAColorBuilder<std_msgs::msg::ColorRGBA>
                   ::InterpolateHotToCold(convex_segment, 1.0,
                                          (double)number_of_convex_segments_);
             display_rep.colors.push_back(color);
@@ -1336,9 +1336,9 @@ TaggedObjectCollisionMapGrid::ExportConvexSegmentForDisplay(
 visualization_msgs::Marker
 TaggedObjectCollisionMapGrid::ExportSurfaceForDisplay(
     const std::unordered_map<GRID_INDEX, uint8_t>& surface,
-    const std_msgs::ColorRGBA& surface_color) const
+    const std_msgs::msg::ColorRGBA& surface_color) const
 {
-  visualization_msgs::Marker display_rep = DefaultMarker();
+  visualization_msgs::msg::Marker display_rep = DefaultMarker();
   display_rep.ns = "tagged_object_collision_map_surface";
   // Add all the cells of the surface
   std::unordered_map<GRID_INDEX, uint8_t>::const_iterator surface_itr;
@@ -1352,7 +1352,7 @@ TaggedObjectCollisionMapGrid::ExportSurfaceForDisplay(
     {
       // Convert grid indices into a real-world location
       const auto location = GridIndexToLocationGridFrame(index);
-      geometry_msgs::Point new_point;
+      geometry_msgs::msg::Point new_point;
       new_point.x = location(0);
       new_point.y = location(1);
       new_point.z = location(2);

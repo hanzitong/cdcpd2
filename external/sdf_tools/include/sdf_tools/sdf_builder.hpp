@@ -2,13 +2,12 @@
 #include <vector>
 #include <string>
 #include <Eigen/Geometry>
-#include <ros/ros.h>
-#include <moveit_msgs/GetPlanningScene.h>
+#include <rclcpp/rclcpp.hpp>
+#include <moveit_msgs/srv/get_planning_scene.hpp>
 #include <urdf_model/model.h>
 #include <moveit/robot_model_loader/robot_model_loader.h>
 #include <moveit/planning_scene/planning_scene.h>
 #include "sdf_tools/sdf.hpp"
-#include "sdf_tools/SDF.h"
 
 #ifndef SDF_BUILDER_HPP
 #define SDF_BUILDER_HPP
