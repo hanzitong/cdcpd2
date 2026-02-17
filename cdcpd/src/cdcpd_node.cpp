@@ -68,7 +68,7 @@ std::pair<Eigen::Matrix3Xf, Eigen::Matrix2Xi> makeRopeTemplate(int const num_poi
 }
 
 PointCloud::Ptr makeCloud(Eigen::Matrix3Xf const& points) {
-  // TODO: Can we do this cleaner via some sort of data mapping?
+  // HSV color mapping for mask generation
   PointCloud::Ptr cloud(new PointCloud);
   for (int i = 0; i < points.cols(); ++i) {
     auto const& c = points.col(i);
@@ -120,7 +120,7 @@ class CDCPD_Moveit_Node : public rclcpp::Node {
 public:
   std::string collision_body_prefix{"cdcpd_tracked_point_"};
   std::string robot_namespace_;
-  std::string robot_description_;
+  std::string robot_description_param_;  // Renamed for clarity - this is a parameter name
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr original_publisher;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr masked_publisher;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr downsampled_publisher;
@@ -145,15 +145,21 @@ public:
   explicit CDCPD_Moveit_Node(std::string const &robot_namespace)
       : Node("cdcpd_node"),
         robot_namespace_(robot_namespace),
-        robot_description_(robot_namespace + "/robot_description") {
+        robot_description_param_("robot_description") {  // Just the parameter name, no namespace prefix
     
     // Initialize TF2
     tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
-    // Initialize scene monitor
+    // Note: Cannot call shared_from_this() in constructor
+    // Initialization that requires shared_from_this() will be done in init()
+  }
+
+  void init() {
+    // Initialize scene monitor (requires shared_from_this)
+    // Use robot_description parameter name without namespace
     scene_monitor_ = std::make_shared<planning_scene_monitor::PlanningSceneMonitor>(
-        shared_from_this(), robot_description_);
+        shared_from_this(), robot_description_param_);
     
     auto const scene_topic = robot_namespace_ + "/move_group/monitored_planning_scene";
     auto const service_name = robot_namespace_ + "/get_planning_scene";
@@ -176,7 +182,7 @@ public:
     contact_marker_pub = this->create_publisher<vm::MarkerArray>("contacts", 10);
     // bbox_pub = this->create_publisher<jsk_recognition_msgs::msg::BoundingBox>("cdcpd/bbox", 10);
 
-    // Moveit Visualization
+    // Moveit Visualization (requires shared_from_this)
     auto const viz_robot_state_topic = "cdcpd_moveit_node/robot_state";
     visual_tools_ = std::make_shared<moveit_visual_tools::MoveItVisualTools>(
         shared_from_this(), "robot_root", viz_robot_state_topic, scene_monitor_);
@@ -198,30 +204,49 @@ public:
     auto const rope_length = this->declare_parameter<float>("rope_length", 1.0);
     auto const max_segment_length = rope_length / static_cast<float>(num_points);
     RCLCPP_DEBUG_STREAM(this->get_logger(), "max segment length " << max_segment_length);
-    RCLCPP_INFO(this->get_logger(), "Waiting for TF...");
     
-    while (rclcpp::ok()) {
-      try {
-        if (tf_buffer_->canTransform(kinect_tf_name, left_tf_name, tf2::TimePointZero) and
-            tf_buffer_->canTransform(kinect_tf_name, right_tf_name, tf2::TimePointZero)) {
-          break;
+    // Variables to be initialized
+    pcl::PointCloud<pcl::PointXYZ>::Ptr tracked_points;
+    Eigen::Matrix2Xi template_edges;
+    
+    // Only wait for TF if gripper frame names are provided
+    if (!left_tf_name.empty() && !right_tf_name.empty()) {
+      RCLCPP_INFO(this->get_logger(), "Waiting for TF frames: %s and %s...", 
+                  left_tf_name.c_str(), right_tf_name.c_str());
+      
+      while (rclcpp::ok()) {
+        try {
+          if (tf_buffer_->canTransform(kinect_tf_name, left_tf_name, tf2::TimePointZero) and
+              tf_buffer_->canTransform(kinect_tf_name, right_tf_name, tf2::TimePointZero)) {
+            break;
+          }
+        } catch (tf2::TransformException const& ex) {
+          RCLCPP_WARN(this->get_logger(), "Waiting for transform: %s", ex.what());
+          rclcpp::sleep_for(std::chrono::milliseconds(100));
         }
-      } catch (tf2::TransformException const& ex) {
-        RCLCPP_WARN(this->get_logger(), "Waiting for transform: %s", ex.what());
-        rclcpp::sleep_for(std::chrono::milliseconds(100));
       }
-    }
-    
-    auto const left_gripper = tf_buffer_->lookupTransform(kinect_tf_name, left_tf_name, tf2::TimePointZero);
-    auto const right_gripper = tf_buffer_->lookupTransform(kinect_tf_name, right_tf_name, tf2::TimePointZero);
+      
+      auto const left_gripper = tf_buffer_->lookupTransform(kinect_tf_name, left_tf_name, tf2::TimePointZero);
+      auto const right_gripper = tf_buffer_->lookupTransform(kinect_tf_name, right_tf_name, tf2::TimePointZero);
 
-    Eigen::Vector3f const start_position =
+      Eigen::Vector3f const start_position =
         ehc::GeometryVector3ToEigenVector3d(left_gripper.transform.translation).cast<float>();
-    Eigen::Vector3f const end_position =
-        ehc::GeometryVector3ToEigenVector3d(right_gripper.transform.translation).cast<float>();
-    auto const [template_vertices, template_edges] = makeRopeTemplate(num_points, start_position, end_position);
+      Eigen::Vector3f const end_position =
+          ehc::GeometryVector3ToEigenVector3d(right_gripper.transform.translation).cast<float>();
+      auto const [template_vertices, template_edges] = makeRopeTemplate(num_points, start_position, end_position);
+      tracked_points = makeCloud(template_vertices);
+      RCLCPP_INFO(this->get_logger(), "Template initialized from TF frames");
+    } else {
+      RCLCPP_WARN(this->get_logger(), "No gripper TF frames specified. Using default template.");
+      // Use default positions if no TF frames are specified
+      Eigen::Vector3f const start_position(-rope_length / 2.0f, 0.0f, 0.0f);
+      Eigen::Vector3f const end_position(rope_length / 2.0f, 0.0f, 0.0f);
+      auto const [template_vertices, template_edges] = makeRopeTemplate(num_points, start_position, end_position);
+      tracked_points = makeCloud(template_vertices);
+    }
+
     // Construct the initial template as a PCL cloud
-    auto tracked_points = makeCloud(template_vertices);
+    // auto tracked_points = makeCloud(template_vertices);  // Moved into the if/else above
 
     // CDCPD parameters
     auto const alpha = this->declare_parameter("alpha", 0.5);
@@ -318,7 +343,7 @@ public:
 
       auto const out = cdcpd(rgb, depth, hsv_mask, intrinsics, tracked_points, obstacle_constraints, max_segment_length,
                              q_dot, q_config, gripper_idx);
-      tracked_points = out.gurobi_output;
+      tracked_points = out.optimized_output;
 
       // Update the frame ids
       {
@@ -326,7 +351,7 @@ public:
         out.masked_point_cloud->header.frame_id = kinect_tf_name;
         out.downsampled_cloud->header.frame_id = kinect_tf_name;
         out.cpd_output->header.frame_id = kinect_tf_name;
-        out.gurobi_output->header.frame_id = kinect_tf_name;
+        out.optimized_output->header.frame_id = kinect_tf_name;
       }
 
       // Add timestamp information
@@ -337,7 +362,7 @@ public:
         out.masked_point_cloud->header.stamp = pcl_time;
         out.downsampled_cloud->header.stamp = pcl_time;
         out.cpd_output->header.stamp = pcl_time;
-        out.gurobi_output->header.stamp = pcl_time;
+        out.optimized_output->header.stamp = pcl_time;
       }
 
       // Publish the point clouds
@@ -360,7 +385,7 @@ public:
         msg.header.frame_id = kinect_tf_name;
         template_publisher->publish(msg);
         
-        pcl::toROSMsg(*out.gurobi_output, msg);
+        pcl::toROSMsg(*out.optimized_output, msg);
         msg.header.frame_id = kinect_tf_name;
         output_publisher->publish(msg);
       }
@@ -390,7 +415,7 @@ public:
           return order;
         };
 
-        auto const rope_marker = rope_marker_fn(out.gurobi_output, "line_order");
+        auto const rope_marker = rope_marker_fn(out.optimized_output, "line_order");
         order_pub->publish(rope_marker);
       }
 
@@ -597,6 +622,9 @@ int main(int argc, char* argv[]) {
   rclcpp::init(argc, argv);
 
   auto cmn = std::make_shared<CDCPD_Moveit_Node>("hdt_michigan");
+  
+  // Initialize after shared_ptr is created
+  cmn->init();
 
   return EXIT_SUCCESS;
 }
