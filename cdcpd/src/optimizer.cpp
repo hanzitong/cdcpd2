@@ -511,32 +511,55 @@ Matrix3Xf Optimizer::operator()(const Matrix3Xf &Y, const Matrix2Xi &E, const st
   data.l = constraint_count > 0 ? l_bounds.data() : nullptr;
   data.u = constraint_count > 0 ? u_bounds.data() : nullptr;
   
-  // Solve
-  osqp_setup(&workspace, &data, &settings);
-  osqp_solve(workspace);
-  
-  // Extract solution
+  // Solve logic
   Matrix3Xf Y_opt(3, num_vectors);
-  if (workspace->info->status_val == OSQP_SOLVED || 
-      workspace->info->status_val == OSQP_SOLVED_INACCURATE) {
-    RCLCPP_DEBUG_STREAM(rclcpp::get_logger(LOGNAME),
-                        "OSQP optimization completed: iter=" << workspace->info->iter << 
-                        ", obj=" << workspace->info->obj_val);
+  bool solved = false;
+  
+  if (constraint_count == 0) {
+    // No constraints to enforce, and we are just minimizing ||x - Y||^2
+    // The solution is simply x = Y.
+    // We can skip OSQP entirely to avoid "Missing matrix A" errors.
+    RCLCPP_DEBUG(rclcpp::get_logger(LOGNAME), "No constraints, skipping OSQP optimization");
+    Y_opt = Y;
+    return Y_opt;
+  }
+
+  // Solve
+  c_int exitflag = osqp_setup(&workspace, &data, &settings);
+  
+  if (exitflag == 0 && workspace != nullptr) {
+    osqp_solve(workspace);
     
-    for (ssize_t i = 0; i < num_vectors; i++) {
-      Y_opt(0, i) = workspace->solution->x[i * 3 + 0];
-      Y_opt(1, i) = workspace->solution->x[i * 3 + 1];
-      Y_opt(2, i) = workspace->solution->x[i * 3 + 2];
+    if (workspace->info->status_val == OSQP_SOLVED || 
+        workspace->info->status_val == OSQP_SOLVED_INACCURATE) {
+      RCLCPP_DEBUG_STREAM(rclcpp::get_logger(LOGNAME),
+                          "OSQP optimization completed: iter=" << workspace->info->iter << 
+                          ", obj=" << workspace->info->obj_val);
+      
+      for (ssize_t i = 0; i < num_vectors; i++) {
+        Y_opt(0, i) = workspace->solution->x[i * 3 + 0];
+        Y_opt(1, i) = workspace->solution->x[i * 3 + 1];
+        Y_opt(2, i) = workspace->solution->x[i * 3 + 2];
+      }
+      solved = true;
+    } else {
+      RCLCPP_ERROR(rclcpp::get_logger(LOGNAME),
+                   "OSQP optimization failed with status: %d", workspace->info->status_val);
     }
   } else {
     RCLCPP_ERROR(rclcpp::get_logger(LOGNAME),
-                 "OSQP optimization failed with status: %d", workspace->info->status_val);
+                 "OSQP setup failed with exitflag: %lld", (long long)exitflag);
+  }
+
+  if (!solved) {
     // Fallback to input
     Y_opt = Y;
   }
   
   // Cleanup
-  osqp_cleanup(workspace);
+  if (workspace != nullptr) {
+    osqp_cleanup(workspace);
+  }
   
   return Y_opt;
   

@@ -247,6 +247,10 @@ static std::tuple<PointCloudRGB::Ptr, PointCloud::Ptr> point_clouds_from_images(
   PointCloudRGB::Ptr unfiltered_cloud(new PointCloudRGB(depth_image.cols, depth_image.rows));
   auto unfiltered_iter = unfiltered_cloud->begin();
 
+  size_t mask_count = 0;
+  size_t bbox_count = 0;
+  size_t valid_depth_count = 0;
+
   for (int v = 0; v < depth_image.rows; ++v) {
     for (int u = 0; u < depth_image.cols; ++u) {
       float depth = local_depth_image.at<float>(v, u);
@@ -266,15 +270,34 @@ static std::tuple<PointCloudRGB::Ptr, PointCloud::Ptr> point_clouds_from_images(
         unfiltered_iter->b = rgb_image.at<Vec3b>(v, u)[2];
 
         Eigen::Array<float, 3, 1> point(x, y, z);
-        if (mask.at<bool>(v, u) && point.min(upper_bounding_box.array()).isApprox(point) &&
-            point.max(lower_bounding_box.array()).isApprox(point)) {
-          filtered_cloud->push_back(pcl::PointXYZ(x, y, z));
+        
+        bool in_mask = mask.at<bool>(v, u);
+        if (in_mask) mask_count++;
+        
+        if (in_mask) {
+            bool in_bbox = point.min(upper_bounding_box.array()).isApprox(point) &&
+                           point.max(lower_bounding_box.array()).isApprox(point);
+            if (in_bbox) {
+                bbox_count++;
+                filtered_cloud->push_back(pcl::PointXYZ(x, y, z));
+            }
         }
+        valid_depth_count++;
       } else {
         unfiltered_iter->x = unfiltered_iter->y = unfiltered_iter->z = bad_point;
       }
       ++unfiltered_iter;
     }
+  }
+  
+  // Log once per frame (or throttle)
+  static int log_counter = 0;
+  if (log_counter++ % 30 == 0) {
+      RCLCPP_INFO_STREAM(rclcpp::get_logger("cdcpd"), 
+        "Cloud Gen Stats: ValidDepth=" << valid_depth_count << 
+        ", InMask=" << mask_count << 
+        ", InBBox=" << bbox_count << 
+        " (Filtered output size: " << filtered_cloud->size() << ")");
   }
 
   assert(unfiltered_iter == unfiltered_cloud->end());
@@ -411,13 +434,15 @@ Matrix3Xd CDCPD::predict(const Matrix3Xd &P, const smmap::AllGrippersSinglePoseD
 // This is for the case where the gripper indices are unknown (in real experiment)
 CDCPD::CDCPD(PointCloud::ConstPtr template_cloud,  // this needs a different data-type for python
              const Matrix2Xi &template_edges, const bool use_recovery, const double alpha, const double beta,
-             const double lambda, const double k, const float zeta, const float obstacle_cost_weight)
+             const double lambda, const double k, const float zeta, const float obstacle_cost_weight,
+             const float downsample_leaf_size)
     : CDCPD(nullptr, template_cloud, template_edges, use_recovery, alpha, beta, lambda,
-            k, zeta, obstacle_cost_weight) {}
+            k, zeta, obstacle_cost_weight, downsample_leaf_size) {}
 
 CDCPD::CDCPD(rclcpp::Node::SharedPtr node, PointCloud::ConstPtr template_cloud,
              const Matrix2Xi &_template_edges, const bool use_recovery, const double alpha, const double beta,
-             const double lambda, const double k, const float zeta, const float obstacle_cost_weight)
+             const double lambda, const double k, const float zeta, const float obstacle_cost_weight,
+             const float downsample_leaf_size)
     : node(node),
       original_template(template_cloud->getMatrixXfMap().topRows(3)),
       template_edges(_template_edges),
@@ -436,6 +461,7 @@ CDCPD::CDCPD(rclcpp::Node::SharedPtr node, PointCloud::ConstPtr template_cloud,
       kvis(1e3),
       zeta(zeta),
       obstacle_cost_weight(obstacle_cost_weight),
+      downsample_leaf_size(downsample_leaf_size),
       use_recovery(use_recovery),
       last_grasp_status({false, false}) {
   last_lower_bounding_box = last_lower_bounding_box - bounding_box_extend;
@@ -565,7 +591,7 @@ CDCPD::Output CDCPD::operator()(const Mat &rgb, const Mat &depth, const Mat &mas
   pcl::VoxelGrid<pcl::PointXYZ> sor;
   RCLCPP_DEBUG_STREAM(rclcpp::get_logger("cdcpd"), "Points in cloud before leaf: " << cloud->width);
   sor.setInputCloud(cloud);
-  sor.setLeafSize(0.02f, 0.02f, 0.02f);
+  sor.setLeafSize(downsample_leaf_size, downsample_leaf_size, downsample_leaf_size);
   sor.filter(*cloud_downsampled);
   RCLCPP_INFO_STREAM(rclcpp::get_logger("cdcpd"), "Points in fully filtered: " << cloud_downsampled->width);
   if (cloud_downsampled->width == 0) {

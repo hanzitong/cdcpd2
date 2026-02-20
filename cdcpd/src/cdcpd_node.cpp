@@ -78,12 +78,13 @@ PointCloud::Ptr makeCloud(Eigen::Matrix3Xf const& points) {
 }
 
 cv::Mat getHsvMask(rclcpp::Node::SharedPtr node, cv::Mat const& rgb) {
-  auto const hue_min = node->declare_parameter("hue_min", 340.0);
-  auto const sat_min = node->declare_parameter("saturation_min", 0.4);
-  auto const val_min = node->declare_parameter("value_min", 0.4);
-  auto const hue_max = node->declare_parameter("hue_max", 20.0);
-  auto const sat_max = node->declare_parameter("saturation_max", 1.0);
-  auto const val_max = node->declare_parameter("value_max", 1.0);
+  // Parameters are declared once in init(); just retrieve them here.
+  auto const hue_min = node->get_parameter("hue_min").as_double();
+  auto const sat_min = node->get_parameter("saturation_min").as_double();
+  auto const val_min = node->get_parameter("value_min").as_double();
+  auto const hue_max = node->get_parameter("hue_max").as_double();
+  auto const sat_max = node->get_parameter("saturation_max").as_double();
+  auto const val_max = node->get_parameter("value_max").as_double();
 
   cv::Mat rgb_f;
   rgb.convertTo(rgb_f, CV_32FC3);
@@ -203,10 +204,22 @@ public:
         shared_from_this(), "robot_root", "cdcpd_visual_tools", scene_monitor_);
     visual_tools_->loadRobotStatePub(viz_robot_state_topic, false);
 
+    // Declare HSV mask parameters once here (getHsvMask uses get_parameter)
+    this->declare_parameter("hue_min", 340.0);
+    this->declare_parameter("saturation_min", 0.4);
+    this->declare_parameter("value_min", 0.4);
+    this->declare_parameter("hue_max", 20.0);
+    this->declare_parameter("saturation_max", 1.0);
+    this->declare_parameter("value_max", 1.0);
+
     auto const kinect_name = this->declare_parameter("kinect_name", "kinect2");
 
     // For use with TF and "fixed points" for the constrain step
-    kinect_tf_name = kinect_name + "_rgb_optical_frame";
+    // Allow overriding the full TF frame name (e.g. for RealSense which uses _color_optical_frame)
+    kinect_tf_name = this->declare_parameter("kinect_tf_frame", "");
+    if (kinect_tf_name.empty()) {
+      kinect_tf_name = kinect_name + "_rgb_optical_frame";
+    }
     auto const num_points = this->declare_parameter("rope_num_points", 11);
     auto const left_node_idx = this->declare_parameter("left_node_idx", num_points - 1);
     auto const right_node_idx = this->declare_parameter("right_node_idx", 1);
@@ -248,8 +261,8 @@ public:
       if (attempts >= max_attempts) {
         RCLCPP_WARN(this->get_logger(), "Timeout waiting for TF frames. Using default template.");
         // Use default template instead
-        Eigen::Vector3f const start_position(-rope_length / 2.0f, 0.0f, 0.0f);
-        Eigen::Vector3f const end_position(rope_length / 2.0f, 0.0f, 0.0f);
+        Eigen::Vector3f const start_position(-rope_length / 2.0f, 0.0f, 1.5f);
+        Eigen::Vector3f const end_position(rope_length / 2.0f, 0.0f, 1.5f);
         auto const [template_vertices, template_edges] = makeRopeTemplate(num_points, start_position, end_position);
         tracked_points_ = makeCloud(template_vertices);
       } else {
@@ -267,8 +280,8 @@ public:
     } else {
       RCLCPP_WARN(this->get_logger(), "No gripper TF frames specified. Using default template.");
       // Use default positions if no TF frames are specified
-      Eigen::Vector3f const start_position(-rope_length / 2.0f, 0.0f, 0.0f);
-      Eigen::Vector3f const end_position(rope_length / 2.0f, 0.0f, 0.0f);
+      Eigen::Vector3f const start_position(-rope_length / 2.0f, 0.0f, 1.5f);
+      Eigen::Vector3f const end_position(rope_length / 2.0f, 0.0f, 1.5f);
       auto const [template_vertices, template_edges] = makeRopeTemplate(num_points, start_position, end_position);
       tracked_points_ = makeCloud(template_vertices);
     }
@@ -284,12 +297,13 @@ public:
     auto const zeta = this->declare_parameter("zeta", 10.0);
     min_distance_threshold = this->declare_parameter("min_distance_threshold", 0.01);
     auto const obstacle_cost_weight = this->declare_parameter("obstacle_cost_weight_", 0.001);
+    auto const downsample_leaf_size = this->declare_parameter("downsample_leaf_size", 0.01);
     auto const use_recovery = this->declare_parameter("use_recovery", false);
     auto const kinect_channel = this->declare_parameter("kinect_channel", "qhd");
     
     auto node_ptr = shared_from_this();
     cdcpd_ = std::make_unique<CDCPD>(node_ptr, tracked_points_, template_edges, use_recovery, alpha, beta, lambda, k_spring, zeta,
-                       obstacle_cost_weight);
+                       obstacle_cost_weight, downsample_leaf_size);
 
     auto const callback = [this, node_ptr]
                           (cv::Mat const& rgb, cv::Mat const& depth, cv::Matx33d const& intrinsics) {

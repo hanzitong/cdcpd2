@@ -55,7 +55,7 @@
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudRGB;
 
-inline Eigen::Vector3f const bounding_box_extend(0.1, 0.2, 0.1);
+inline Eigen::Vector3f const bounding_box_extend(1.0, 1.0, 1.0);
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 typedef K::FT FT;
@@ -108,7 +108,8 @@ class CDCPD
         double lambda = 1.0,
         double k = 100.0,
         float zeta = 10.0,
-        float obstacle_cost_weight = 1.0);
+        float obstacle_cost_weight = 1.0,
+        float downsample_leaf_size = 0.01);
 
   CDCPD(rclcpp::Node::SharedPtr node,
         PointCloud::ConstPtr template_cloud,
@@ -119,7 +120,8 @@ class CDCPD
         double lambda = 1.0,
         double k = 100.0,
         float zeta = 10.0,
-        float obstacle_cost_weight = 1.0);
+        float obstacle_cost_weight = 1.0,
+        float downsample_leaf_size = 0.01);
 
   // If you have want gripper constraints to be added & removed automatically based on is_grasped & distance
   Output operator()(const cv::Mat &rgb,
@@ -201,6 +203,7 @@ class CDCPD
   float kvis;
   float zeta;
   float obstacle_cost_weight;
+  float downsample_leaf_size;
   bool use_recovery = false;
   Eigen::MatrixXi gripper_idx;
   std::shared_ptr<const sdf_tools::SignedDistanceField> sdf_ptr;
